@@ -92,12 +92,18 @@ the `filename.template` template.
 
 ## Run
 
+### Ubuntu SuperSlicer
 ```sh
 ./spoolman2slicer.py -U -d ~/.config/SuperSlicer/filament/
 ```
-or
+### Ubuntu OrcaSlicer
 ```sh
 ./spoolman2slicer.py -s orcaslicer -U -d ~/.config/OrcaSlicer/user/default/filament/
+```
+
+### MacOs OrcaSlicer
+```sh
+./spoolman2slicer.py -s orcaslicer -U -d  ~/Library/Application\ Support/OrcaSlicer/user/default/filament
 ```
 
 See the other options above.
