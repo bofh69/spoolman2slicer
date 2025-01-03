@@ -81,6 +81,30 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+template_path = os.path.expanduser("~/.config/spoolman2slicer/templates-" + args.slicer)
+
+if not os.path.exists(template_path):
+    script_dir = os.path.dirname(__file__)
+    print(
+        (
+            f'ERROR: No templates found in "{template_path}".\n'
+            "\n"
+            "Install them with:\n"
+            "\n"
+            "mkdir -p ~/.config/spoolman2slicer\n"
+            f"cp -r {script_dir}/templates-* ~/.config/spoolman2slicer/\n"
+        ),
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+if not os.path.exists(template_path):
+    print(f'ERROR: No templates found in "{template_path}".', file=sys.stderr)
+    sys.exit(1)
+
+loader = FileSystemLoader(template_path)
+
+
 loader = FileSystemLoader("templates-" + args.slicer)
 templates = Environment(loader=loader)  # nosec B701
 
