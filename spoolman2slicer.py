@@ -39,7 +39,7 @@ parser.add_argument(
     "--dir",
     metavar="DIR",
     required=True,
-    help="the filament config dir",
+    help="the slicer's filament config dir",
 )
 
 parser.add_argument(
@@ -100,6 +100,10 @@ if not os.path.exists(template_path):
 
 if not os.path.exists(template_path):
     print(f'ERROR: No templates found in "{template_path}".', file=sys.stderr)
+    sys.exit(1)
+
+if not os.path.exists(args.dir):
+    print(f'ERROR: The output dir "{args.dir}" doesn\'t exist.', file=sys.stderr)
     sys.exit(1)
 
 loader = FileSystemLoader(template_path)
