@@ -82,7 +82,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 loader = FileSystemLoader("templates-" + args.slicer)
-templates = Environment(loader=loader) # nosec B701
+templates = Environment(loader=loader)  # nosec B701
 
 filament_id_to_filename = {}
 filament_id_to_content = {}
