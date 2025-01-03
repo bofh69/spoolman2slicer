@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2025 Sebastian Andersson <sebastian@bittr.nu>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+version = 1
+SPDX-PackageName = "sm2ss"
+SPDX-PackageSupplier = "Sebastian Andersson <sebastian@bittr.nu>"
+SPDX-PackageDownloadLocation = "https://github.com/bofh69/sm2ss"
+
+[[annotations]]
+path = [".github/**", "requirements.txt", ".gitignore", "templates-**/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "$YEAR $NAME <$CONTACT>"
+SPDX-License-Identifier = "CC0-1.0"
