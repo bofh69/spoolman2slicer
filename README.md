@@ -107,3 +107,7 @@ the `filename.template` template.
 ```
 
 See the other options above.
+
+## Development
+
+Please format the code with `make fmt` and lint it with `make lint` before making a PR.
