@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2024 Sebastian Andersson <sebastian@bittr.nu>
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
-[![REUSE status](https://api.reuse.software/badge/github.com/bofh69/nfc2klipper)](https://api.reuse.software/info/github.com/bofh69/spoolman2slicer)
+[![REUSE status](https://api.reuse.software/badge/github.com/bofh69/spoolman2slicer)](https://api.reuse.software/info/github.com/bofh69/spoolman2slicer)
 ![GitHub Workflow Status](https://github.com/bofh69/spoolman2slicer/actions/workflows/pylint.yml/badge.svg)
 
 # Spoolman to slicer config generator
