@@ -8,18 +8,51 @@ SPDX-License-Identifier: GPL-3.0-or-later
 ![GitHub Workflow Status](https://github.com/bofh69/spoolman2slicer/actions/workflows/pylint.yml/badge.svg)
 
 # Spoolman to slicer config generator
-Create slicer filament configuration files from the spools in
-[Spoolman](https://github.com/Donkie/Spoolman).
 
-My templates are included for:
-* [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer)
-* [SuperSlicer](https://github.com/supermerill/SuperSlicer)
+## Intro
 
-They are easy to update with your settings.
+A python program to create filament configurations in
+[OrcaSlicer](https://github.com/SoftFever/OrcaSlicer)
+and
+[SuperSlicer](https://github.com/supermerill/SuperSlicer)
+from the active spools in [Spoolman](https://github.com/Donkie/Spoolman)'s database.'
 
+It could easily be extended to support more slicers.
+
+The filament configuration files are based on templates. My templates
+are included in the repo, but you should make your own based on your
+settings. See below for how to do that.
+
+<!--
 It should be possible to use it with
 [slic3r](https://github.com/slic3r/Slic3r)
 and [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer) too, but there are no included templates for them.
+-->
+
+## The workflow
+
+You add your spools' manufacturers, filaments and the spools to Spoolman.
+
+For each filament that has at least one active spool, spoolman2slicer creates a
+filament configuration.
+
+The next time you start the slicer you will see the available filaments.
+
+My templates contain a "filament_start_gcode" command, `ASSERT_ACTIVE_FILAMENT ID={{id}}`,
+which comes from
+[this file](https://github.com/bofh69/nfc2klipper/blob/v0.0.4/klipper-spoolman.cfg) in
+my other repo, [nfc2klipper](https://github.com/bofh69/nfc2klipper).
+It will run whenever the print starts to use that filament.
+
+That macro checks that the `active_filament` variable is the same as the choosen filament.
+
+The `active_filament` variable is set by first calling `SET_ACTIVE_FILAMENT ID=` and the id.
+That is called automatically by nfc2klipper.
+
+There is a Moonraker agent [spool2slicer](https://github.com/bofh69/spool2slicer)
+that can be used to update the active_filament variable whenever the spool is changed
+in moonraker (via frontends, code macros) etc.
+
 
 ## Usage
 
