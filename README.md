@@ -49,7 +49,7 @@ That macro checks that the `active_filament` variable is the same as the choosen
 The `active_filament` variable is set by first calling `SET_ACTIVE_FILAMENT ID=` and the id.
 That is called automatically by nfc2klipper.
 
-There is a Moonraker agent [spool2slicer](https://github.com/bofh69/spool2slicer)
+There is a Moonraker agent [spool2klipper](https://github.com/bofh69/spool2klipper)
 that can be used to update the active_filament variable whenever the spool is changed
 in moonraker (via frontends, code macros) etc.
 
