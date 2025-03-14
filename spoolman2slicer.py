@@ -107,9 +107,6 @@ if not os.path.exists(args.dir):
     sys.exit(1)
 
 loader = FileSystemLoader(template_path)
-
-
-loader = FileSystemLoader("templates-" + args.slicer)
 templates = Environment(loader=loader)  # nosec B701
 
 filament_id_to_filename = {}
