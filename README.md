@@ -59,20 +59,21 @@ in moonraker (via frontends, code macros) etc.
 ```sh
 usage: spoolman2slicer.py [-h] [--version] -d DIR
                           [-s {orcaslicer,prusaslicer,slic3r,superslicer}]
-                          [-u URL] [-U] [-D]
+                          [-u URL] [-U] [-v] [-V VALUE1,VALUE2..] [-D]
 
 Fetches filaments from Spoolman and creates slicer filament config files.
 
 options:
   -h, --help            show this help message and exit
-  --version             show program\'s version number and exit
-  -d DIR, --dir DIR     the filament config dir
+  --version             show program's version number and exit
+  -d DIR, --dir DIR     the slicer's filament config dir
   -s {orcaslicer,prusaslicer,slic3r,superslicer}, --slicer {orcaslicer,prusaslicer,slic3r,superslicer}
                         the slicer
   -u URL, --url URL     URL for the Spoolman installation
-  -U, --updates         keep running and update filament configs if they\'re
-                        updated in Spoolman
+  -U, --updates         keep running and update filament configs if they'reupdated in Spoolman
   -v, --verbose         verbose output
+  -V VALUE1,VALUE2.., --variant VALUE1,VALUE2..
+                        write one template per variant, separated by comma
   -D, --delete-all      delete all filament configs before adding existing
                         ones
 ```
@@ -117,6 +118,7 @@ spoolman2slicer also adds its own fields under the `sm2s` field:
 * now - the time when the file is created.
 * now_int - the time when the file is created as the number of seconds since UNIX' epoch.
 * slicer_suffix - the filename's suffix.
+* variant - one of the comma separated values given to the `--variant` argument, or an empty string.
 
 
 The available variables, and their values, can be printed by spoolman2slicer when
@@ -153,7 +155,8 @@ With my Spoolman install the output can look like this (after pretty printing it
     'version': '0.0.1',
     'now': 'Sun Jan 26 10:57:51 2025',
     'now_int': 1737885471,
-    'slicer_suffix': 'ini'
+    'slicer_suffix': 'ini',
+    'variant': 'printer1'
   }
 }
 ```
@@ -174,7 +177,7 @@ from the slicer's config dir (on linux: `~/.config/SuperSlicer/filament/` or
 `~/.config/OrcaSlicer/user/default/filament/`) to the template dir and
 name it like described above.
 
-In the templates, variables are surrounded by `{` and `}`.
+In the templates, variables are surrounded by `{{` and `}}`.
 For variables with values that contain more variables, you write all
 the variable names with a dot between. Ie the vendor's name (`Gilford`
 above) is written as: `{vendor.name}`. Be careful to use the same style as
@@ -182,11 +185,27 @@ the original file. If the file wrote `"Gilford"`, remember to keep the
 `"` characters around the variable.
 
 There is one special template file, the `filename.template`. It is used to create
-the name of the generated files. Just copy the default one.
+the name of the generated files. Just copy the default one, unless you
+want different styles for your filenames.
 
 The templates are quite advanced. Follow the link above to jinja2 to
 read its documentation.
 
+## The variant argument
+
+When using the `--variant` argument should have two more mora values,
+separated by commas. Ie `--variant printer_small,printer_big`.
+
+spoolman2slicer then generates one set of files per value.
+Each time sm2s.variant will have one of the given values.
+
+The templates can check the variable and output different fields or values depending on it.
+Ie:
+```
+start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE={% if sm2s.variant == "printer_big %}{{extra.pressure_advance_big|default(0)|float}}{% else %}"{{extra.pressure_advance_small|default(0)|float}}{% endif %}\n"
+```
+
+The default `filename.template` file uses the variant variable to put the variant first in the filename, if given.
 
 ## Run
 
