@@ -27,7 +27,7 @@ ORCASLICER = "orcaslicer"
 PRUSASLICER = "prusaslicer"
 SLICER = "slic3r"
 SUPERSLICER = "superslicer"
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 
 parser = argparse.ArgumentParser(
     description="Fetches filaments from Spoolman and creates slicer filament config files.",
@@ -73,6 +73,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "-V",
+    "--variant",
+    metavar="VALUE1,VALUE2..",
+    default="",
+    help="write one template per variant, separated by comma",
+)
+
+parser.add_argument(
     "-D",
     "--delete-all",
     action="store_true",
@@ -115,7 +123,7 @@ filament_id_to_content = {}
 filename_usage = {}
 
 
-def add_sm2s_to_filament(filament, suffix):
+def add_sm2s_to_filament(filament, suffix, variant):
     """Adds the sm2s object to filament"""
     sm2s = {
         "name": parser.prog,
@@ -123,6 +131,7 @@ def add_sm2s_to_filament(filament, suffix):
         "now": time.asctime(),
         "now_int": int(time.time()),
         "slicer_suffix": suffix,
+        "variant": variant.strip(),
     }
     filament["sm2s"] = sm2s
 
@@ -146,7 +155,7 @@ def load_filaments_from_spoolman(url: str):
 def get_filament_filename(filament):
     """Returns the filament's config filename"""
     template = templates.get_template(FILENAME_TEMPLATE)
-    return args.dir + "/" + template.render(filament)
+    return args.dir + "/" + template.render(filament).strip()
 
 
 def get_cached_filename_from_filaments_id(filament):
@@ -265,16 +274,18 @@ def load_and_update_all_filaments(url: str):
     for spool in spools:
         filament = spool["filament"]
         for suffix in get_config_suffix():
-            add_sm2s_to_filament(filament, suffix)
-            write_filament(filament)
+            for variant in args.variant.split(","):
+                add_sm2s_to_filament(filament, suffix, variant)
+                write_filament(filament)
 
 
 def handle_filament_update(filament):
     """Handles update of a filament"""
-    for suffix in get_config_suffix():
-        add_sm2s_to_filament(filament, suffix)
-        delete_filament(filament, is_update=True)
-        write_filament(filament)
+    for variant in args.variant.split(","):
+        for suffix in get_config_suffix():
+            add_sm2s_to_filament(filament, suffix, variant)
+            delete_filament(filament, is_update=True)
+            write_filament(filament)
 
 
 def handle_spool_update_msg(msg):
@@ -283,15 +294,17 @@ def handle_spool_update_msg(msg):
     spool = msg["payload"]
     filament = spool["filament"]
     if msg["type"] == "added":
-        for suffix in get_config_suffix():
-            add_sm2s_to_filament(filament, suffix)
-            write_filament(filament)
+        for variant in args.variant.split(","):
+            for suffix in get_config_suffix():
+                add_sm2s_to_filament(filament, suffix, variant)
+                write_filament(filament)
     elif msg["type"] == "updated":
         handle_filament_update(filament)
     elif msg["type"] == "deleted":
-        for suffix in get_config_suffix():
-            add_sm2s_to_filament(filament, suffix)
-            delete_filament(filament)
+        for variant in args.variant.split(","):
+            for suffix in get_config_suffix():
+                add_sm2s_to_filament(filament, suffix, variant)
+                delete_filament(filament)
     else:
         print(f"Got unknown filament update msg: {msg}")
 
