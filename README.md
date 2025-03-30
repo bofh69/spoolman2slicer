@@ -119,6 +119,7 @@ spoolman2slicer also adds its own fields under the `sm2s` field:
 * now_int - the time when the file is created as the number of seconds since UNIX' epoch.
 * slicer_suffix - the filename's suffix.
 * variant - one of the comma separated values given to the `--variants` argument, or an empty string.
+* spoolman_url - the URL to spoolman.
 
 
 The available variables, and their values, can be printed by spoolman2slicer when
@@ -156,7 +157,8 @@ With my Spoolman install the output can look like this (after pretty printing it
     'now': 'Sun Jan 26 10:57:51 2025',
     'now_int': 1737885471,
     'slicer_suffix': 'ini',
-    'variants': 'printer1'
+    'variants': 'printer1',
+    'spoolman_url': 'http://mainsailos.local:7912'
   }
 }
 ```

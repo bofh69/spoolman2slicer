@@ -132,6 +132,7 @@ def add_sm2s_to_filament(filament, suffix, variant):
         "now_int": int(time.time()),
         "slicer_suffix": suffix,
         "variant": variant.strip(),
+        "spoolman_url": args.url,
     }
     filament["sm2s"] = sm2s
 
