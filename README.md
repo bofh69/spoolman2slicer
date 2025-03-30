@@ -72,8 +72,8 @@ options:
   -u URL, --url URL     URL for the Spoolman installation
   -U, --updates         keep running and update filament configs if they'reupdated in Spoolman
   -v, --verbose         verbose output
-  -V VALUE1,VALUE2.., --variant VALUE1,VALUE2..
-                        write one template per variant, separated by comma
+  -V VALUE1,VALUE2.., --variants VALUE1,VALUE2..
+                        write one template per value, separated by comma
   -D, --delete-all      delete all filament configs before adding existing
                         ones
 ```
@@ -118,7 +118,7 @@ spoolman2slicer also adds its own fields under the `sm2s` field:
 * now - the time when the file is created.
 * now_int - the time when the file is created as the number of seconds since UNIX' epoch.
 * slicer_suffix - the filename's suffix.
-* variant - one of the comma separated values given to the `--variant` argument, or an empty string.
+* variant - one of the comma separated values given to the `--variants` argument, or an empty string.
 
 
 The available variables, and their values, can be printed by spoolman2slicer when
@@ -156,7 +156,7 @@ With my Spoolman install the output can look like this (after pretty printing it
     'now': 'Sun Jan 26 10:57:51 2025',
     'now_int': 1737885471,
     'slicer_suffix': 'ini',
-    'variant': 'printer1'
+    'variants': 'printer1'
   }
 }
 ```
@@ -191,10 +191,10 @@ want different styles for your filenames.
 The templates are quite advanced. Follow the link above to jinja2 to
 read its documentation.
 
-## The variant argument
+## The variants argument
 
-When using the `--variant` argument should have two more mora values,
-separated by commas. Ie `--variant printer_small,printer_big`.
+When using the `--variants` argument should have two more mora values,
+separated by commas. Ie `--variants printer_small,printer_big`.
 
 spoolman2slicer then generates one set of files per value.
 Each time sm2s.variant will have one of the given values.

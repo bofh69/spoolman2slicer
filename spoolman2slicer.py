@@ -74,10 +74,10 @@ parser.add_argument(
 
 parser.add_argument(
     "-V",
-    "--variant",
+    "--variants",
     metavar="VALUE1,VALUE2..",
     default="",
-    help="write one template per variant, separated by comma",
+    help="write one template per value, separated by comma",
 )
 
 parser.add_argument(
@@ -274,14 +274,14 @@ def load_and_update_all_filaments(url: str):
     for spool in spools:
         filament = spool["filament"]
         for suffix in get_config_suffix():
-            for variant in args.variant.split(","):
+            for variant in args.variants.split(","):
                 add_sm2s_to_filament(filament, suffix, variant)
                 write_filament(filament)
 
 
 def handle_filament_update(filament):
     """Handles update of a filament"""
-    for variant in args.variant.split(","):
+    for variant in args.variants.split(","):
         for suffix in get_config_suffix():
             add_sm2s_to_filament(filament, suffix, variant)
             delete_filament(filament, is_update=True)
@@ -294,14 +294,14 @@ def handle_spool_update_msg(msg):
     spool = msg["payload"]
     filament = spool["filament"]
     if msg["type"] == "added":
-        for variant in args.variant.split(","):
+        for variant in args.variants.split(","):
             for suffix in get_config_suffix():
                 add_sm2s_to_filament(filament, suffix, variant)
                 write_filament(filament)
     elif msg["type"] == "updated":
         handle_filament_update(filament)
     elif msg["type"] == "deleted":
-        for variant in args.variant.split(","):
+        for variant in args.variants.split(","):
             for suffix in get_config_suffix():
                 add_sm2s_to_filament(filament, suffix, variant)
                 delete_filament(filament)
