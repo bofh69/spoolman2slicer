@@ -193,6 +193,8 @@ want different styles for your filenames.
 The templates are quite advanced. Follow the link above to jinja2 to
 read its documentation.
 
+The [Jinja Playground](https://github.com/bofh69/jinja-playground) program can help when editing the templates, by providing instant feedback.
+
 ## The variants argument
 
 When using the `--variants` argument should have two more mora values,
