@@ -12,9 +12,11 @@ import argparse
 import asyncio
 import json
 import os
+import platform
 import time
 import sys
 
+from appdirs import user_config_dir
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import requests
 from websockets.client import connect
@@ -27,7 +29,7 @@ ORCASLICER = "orcaslicer"
 PRUSASLICER = "prusaslicer"
 SLICER = "slic3r"
 SUPERSLICER = "superslicer"
-VERSION = "0.0.2"
+VERSION = "0.0.3"
 
 parser = argparse.ArgumentParser(
     description="Fetches filaments from Spoolman and creates slicer filament config files.",
@@ -89,21 +91,38 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-template_path = os.path.expanduser("~/.config/spoolman2slicer/templates-" + args.slicer)
+config_dir = user_config_dir("spoolman2slicer", "bofh69")
+template_path = os.path.join(config_dir, f"templates-{args.slicer}")
+
+if args.verbose:
+    print(f"Reading templates files from: {template_path}")
 
 if not os.path.exists(template_path):
     script_dir = os.path.dirname(__file__)
-    print(
-        (
-            f'ERROR: No templates found in "{template_path}".\n'
-            "\n"
-            "Install them with:\n"
-            "\n"
-            "mkdir -p ~/.config/spoolman2slicer\n"
-            f"cp -r {script_dir}/templates-* ~/.config/spoolman2slicer/\n"
-        ),
-        file=sys.stderr,
-    )
+    if platform.system() == "Windows":
+        print(
+            (
+                f'ERROR: No templates found in "{template_path}".\n'
+                "\n"
+                "Install them with:\n"
+                "\n"
+                f'mkdir "{config_dir} /p"\n'
+                f'copy "{script_dir}"\\templates-* "{config_dir}\\"\n'
+            ),
+            file=sys.stderr,
+        )
+    else:
+        print(
+            (
+                f'ERROR: No templates found in "{template_path}".\n'
+                "\n"
+                "Install them with:\n"
+                "\n"
+                "mkdir -p '{config_dir}'\n"
+                f"cp -r '{script_dir}'/templates-* '{config_dir}/'\n"
+            ),
+            file=sys.stderr,
+        )
     sys.exit(1)
 
 if not os.path.exists(template_path):
