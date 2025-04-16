@@ -139,7 +139,7 @@ def add_sm2s_to_filament(filament, suffix, variant):
 
 def get_config_suffix():
     """Returns the slicer's config file prefix"""
-    if args.slicer == SUPERSLICER:
+    if args.slicer in (SUPERSLICER, PRUSASLICER):
         return ["ini"]
     if args.slicer == ORCASLICER:
         return ["json", "info"]
