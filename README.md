@@ -11,13 +11,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## Intro
 
-A python program to create filament configurations in
-[OrcaSlicer](https://github.com/SoftFever/OrcaSlicer)
-and
-[SuperSlicer](https://github.com/supermerill/SuperSlicer)
-from the active spools in [Spoolman](https://github.com/Donkie/Spoolman)'s database.'
+A python program to export active Spoolman spools' data to filament
+configurations files for:
 
-It could easily be extended to support more slicers.
+* [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer)
+* [PrusaSlicer](https://www.prusa3d.com/page/prusaslicer_424/)
+* [SuperSlicer](https://github.com/supermerill/SuperSlicer)
+
+It is easy be extended it to support more slicers.
 
 The filament configuration files are based on templates. My templates
 are included in the repo, but you should make your own based on your
@@ -175,7 +176,10 @@ files (one per material) and update the files' fields to use
 the available variables.
 
 To generate your own templates, copy your existing filament settings
-from the slicer's config dir (on linux: `~/.config/SuperSlicer/filament/` or
+from the slicer's config dir (on linux:
+`~/.config/SuperSlicer/filament/`,
+`~/.var/app/com.prusa3d.PrusaSlicer/config/PrusaSlicer/filament/`
+or
 `~/.config/OrcaSlicer/user/default/filament/`) to the template dir and
 name it like described above.
 
@@ -213,16 +217,22 @@ The default `filename.template` file uses the variant variable to put the varian
 
 ## Run
 
-### Ubuntu SuperSlicer
-```sh
-./spoolman2slicer.py -U -d ~/.config/SuperSlicer/filament/
-```
-### Ubuntu OrcaSlicer
+### Ubuntu & OrcaSlicer
 ```sh
 ./spoolman2slicer.py -s orcaslicer -U -d ~/.config/OrcaSlicer/user/default/filament/
 ```
 
-### MacOs OrcaSlicer
+### Ubuntu & PrusaSlicer
+```sh
+./spoolman2slicer.py -s prusaslicer -U -d ~/.var/app/com.prusa3d.PrusaSlicer/config/PrusaSlicer/filament/
+```
+
+### Ubuntu & SuperSlicer
+```sh
+./spoolman2slicer.py -U -d ~/.config/SuperSlicer/filament/
+```
+
+### MacOs & OrcaSlicer
 ```sh
 ./spoolman2slicer.py -s orcaslicer -U -d  ~/Library/Application\ Support/OrcaSlicer/user/default/filament
 ```
