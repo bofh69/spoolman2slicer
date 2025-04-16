@@ -100,9 +100,17 @@ such a template for the configuration files' names.
 ### Where the files are read from
 
 The templates are stored with the filaments' material's name in
-`$HOME/.config/spoolman2slicer/templates-<slicer>/<material>.<suffix>.template`.
+`<configdir>/spoolman2slicer/templates-<slicer>/<material>.<suffix>.template`.
 
-Where `slicer` is the used slicer (superslicer or orcaslicer).
+`<configdir>` depends on the operating system:
+
+| OS      | Path                                |
+| :------ | :---------------------------------- |
+| Linux   | `$HOME/.config`                     |
+| MacOS   | `$HOME/Library/Application Support` |
+| Windows | `%APPDATA%`                         |
+
+`slicer` is the used slicer (superslicer or orcaslicer).
 `<material>` is the material used in the filament in Spoolman, ie PLA, ABS etc.
 `<suffix>` is `ini` for Super Slicer, `info` and `json` for Orca Slicer
 (it uses two files per filament).
