@@ -115,6 +115,9 @@ The templates are stored with the filaments' material's name in
 `<suffix>` is `ini` for Super Slicer, `info` and `json` for Orca Slicer
 (it uses two files per filament).
 
+If the material isn't found, "default" is used as the material name.
+
+
 ### Available variables in the templates
 
 The variables available to use in the templates comes from the return
@@ -172,48 +175,79 @@ With my Spoolman install the output can look like this (after pretty printing it
 }
 ```
 
+### Creating templates from existing config
+
+The `create_template_files.py` program can create basic template files
+by copying existing filament config files.
+
+Run it like this:
+```sh
+./create_template_files.py -s orcaslicer -v
+```
+
+If the program doesn't find the slicers' config dir, use the -d option:
+```sh
+./create_template_files.py -s orcaslicer -v -d "path/to/slicers/filament/config/dir"
+```
+
+If that's needed, please create/update a github issue with your operating
+system, the slicer and the path where you found the filament config files.
+
+---
+
+If needed, the program will create the templates' config dir and
+copy the `filename.template` file there.
+
+For every filament config file in the slicer, it will create a template
+file for its material, unless the material already has a template file.
+
+The generated files might work for you, but you should check them
+before using them. The start gcode probably needs updates as well as
+the first layer temperatures.
+
+
 ### Writing the templates
 
-The default templates are based on mine. They assume there is an extra
+The default templates as well as the generated template files are based
+on my settings. They assume there is an extra
 Spoolman filament field defined called "pressure_advance" and sets the
 pressure advance settings based on it. The Orca Slicer files also assumes
-one had added the Voron filaments in Orca Slicer as they inherit from them.
+one has added the Voron filaments in Orca Slicer as they inherit from them (but that's not
+the case for the generated files).
 
-When making your own, it is better to copy your existing filament settings
-files (one per material) and update the files' fields to use
-the available variables.
-
-To generate your own templates, copy your existing filament settings
-from the slicer's config dir (on linux:
-`~/.config/SuperSlicer/filament/`,
-`~/.var/app/com.prusa3d.PrusaSlicer/config/PrusaSlicer/filament/`
-or
-`~/.config/OrcaSlicer/user/default/filament/`) to the template dir and
-name it like described above.
+When making your own, it is best to start with the generated files and
+update the files' fields to fit your preferences.
 
 In the templates, variables are surrounded by `{{` and `}}`.
 For variables with values that contain more variables, you write all
 the variable names with a dot between. Ie the vendor's name (`Gilford`
-above) is written as: `{vendor.name}`. Be careful to use the same style as
+above) is written as: `{{vendor.name}}`. Be careful to use the same style as
 the original file. If the file wrote `"Gilford"`, remember to keep the
 `"` characters around the variable.
 
 There is one special template file, the `filename.template`. It is used to create
-the name of the generated files. Just copy the default one, unless you
+the name of the generated files. Just use the default one, unless you
 want different styles for your filenames.
+
+You should also have a `default.<suffix>.template` file (or two with
+OrcaSlicer, one for the .info file as well). It will be used if there is no
+material specific template file. I've just copied the PLA templates.
+
 
 The templates are quite advanced. Follow the link above to jinja2 to
 read its documentation.
 
-The [Jinja Playground](https://github.com/bofh69/jinja-playground) program can help when editing the templates, by providing instant feedback.
+The [Jinja Playground](https://github.com/bofh69/jinja-playground) program can help
+when editing the templates, by providing instant feedback.
 
-## The variants argument
 
-When using the `--variants` argument should have two more mora values,
-separated by commas. Ie `--variants printer_small,printer_big`.
+## Generating for multiple printers, the variants argument
+
+When using the `--variants` argument, it should have two or more more
+values, separated by commas. Ie `--variants printer_small,printer_big`.
 
 spoolman2slicer then generates one set of files per value.
-Each time sm2s.variant will have one of the given values.
+Each time `sm2s.variant` will have one of the given values.
 
 The templates can check the variable and output different fields or values depending on it.
 Ie:
@@ -221,7 +255,9 @@ Ie:
 start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE={% if sm2s.variant == "printer_big %}{{extra.pressure_advance_big|default(0)|float}}{% else %}"{{extra.pressure_advance_small|default(0)|float}}{% endif %}\n"
 ```
 
-The default `filename.template` file uses the variant variable to put the variant first in the filename, if given.
+The default `filename.template` file uses the variant variable to put
+the variant first in the filename, if given, but the other template files don't use it.
+
 
 ## Run
 
