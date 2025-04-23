@@ -21,6 +21,9 @@ from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import requests
 from websockets.client import connect
 
+
+VERSION = "0.0.2-3-gdf67a39"
+
 DEFAULT_TEMPLATE_PREFIX = "default."
 DEFAULT_TEMPLATE_SUFFIX = ".template"
 FILENAME_TEMPLATE = "filename.template"
@@ -29,7 +32,6 @@ ORCASLICER = "orcaslicer"
 PRUSASLICER = "prusaslicer"
 SLICER = "slic3r"
 SUPERSLICER = "superslicer"
-VERSION = "0.0.3"
 
 parser = argparse.ArgumentParser(
     description="Fetches filaments from Spoolman and creates slicer filament config files.",

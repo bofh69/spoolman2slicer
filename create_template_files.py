@@ -18,7 +18,7 @@ import sys
 from appdirs import user_config_dir
 
 
-VERSION = "0.0.3"
+VERSION = "0.0.2-3-gdf67a39"
 
 ORCASLICER = "orcaslicer"
 PRUSASLICER = "prusaslicer"
