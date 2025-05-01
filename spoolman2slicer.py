@@ -91,7 +91,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-config_dir = user_config_dir("spoolman2slicer", "bofh69")
+config_dir = user_config_dir(appname="spoolman2slicer", appauthor=False, roaming=True)
 template_path = os.path.join(config_dir, f"templates-{args.slicer}")
 
 if args.verbose:
