@@ -21,7 +21,7 @@ help:
 
 $(VENV_TIMESTAMP): requirements.txt
 	@echo Building $(VENV)
-	virtualenv -p python3 $(VENV)
+	python3 -m venv $(VENV)
 	$(PIP) install -r $<
 	touch $@
 
