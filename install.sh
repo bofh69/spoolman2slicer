@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# SPDX-FileCopyrightText: 2025 Jose Tomas Milla <jtomas1298@gmail.com>
+
 # Function to check for updates
 function check_for_updates() {
     echo "▶ Checking for updates..."
