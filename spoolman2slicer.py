@@ -22,7 +22,7 @@ import requests
 from websockets.client import connect
 
 
-VERSION = "0.0.2-3-gdf67a39"
+VERSION = "0.0.3-bud4ever-spool-id"
 
 DEFAULT_TEMPLATE_PREFIX = "default."
 DEFAULT_TEMPLATE_SUFFIX = ".template"
@@ -143,6 +143,21 @@ filament_id_to_content = {}
 
 filename_usage = {}
 
+def get_spool_id_map(spoolman_url):
+    try:
+        response = requests.get(f"{spoolman_url}/api/v1/spool", timeout=10)
+        response.raise_for_status()
+        spools = response.json()
+        spool_map = {}
+        for spool in spools:
+            filament = spool.get("filament")
+            if filament:
+                key = (filament.get("name"), filament.get("vendor", {}).get("name"))
+                spool_map[key] = spool.get("id")
+        return spool_map
+    except Exception as e:
+        print(f"Error fetching spools: {e}")
+        return {}
 
 def add_sm2s_to_filament(filament, suffix, variant):
     """Adds the sm2s object to filament"""
@@ -270,6 +285,10 @@ def write_filament(filament):
         print(f"Rendering for filename: {filename}")
         print("Fields for the template:")
         print(filament)
+        
+    key = (filament.get("name"), filament.get("vendor", {}).get("name"))
+    spool_id = spool_id_map.get(key)
+    filament["spool_id"] = spool_id
 
     filament_text = template.render(filament)
     old_filament_text = filament_id_to_content.get(filament_id)
@@ -370,7 +389,9 @@ if args.delete_all:
     delete_all_filaments()
 
 try:
+    spool_id_map = get_spool_id_map(args.url)
     load_and_update_all_filaments(args.url)
+
 except requests.exceptions.ConnectionError as ex:
     print("Could not connect to SpoolMan:")
     print(ex)
