@@ -1,9 +1,3 @@
-<!--
-SPDX-FileCopyrightText: 2025 Andreas Gruber <grba@keba.com>
-
-SPDX-License-Identifier: GPL-3.0-or-later
--->
-
 [![REUSE status](https://api.reuse.software/badge/github.com/bud4ever/spoolman2slicerPro)](https://api.reuse.software/info/github.com/bud4ever/spoolman2slicerPro)
 ![GitHub Workflow Status](https://github.com/bud4ever/spoolman2slicerPro/actions/workflows/pylint.yml/badge.svg)
 
@@ -48,6 +42,14 @@ usage: spoolman2slicer.py [-h] [--version] -d DIR
 ./spoolman2slicer.py -s orcaslicer -U -d ~/.config/OrcaSlicer/user/default/filament/
 ```
 
+## Setup
+
+```sh
+python3 -m venv venv
+. venv/bin/activate
+pip install -r requirements.txt
+```
+
 ## Injected G-Code Example
 
 The exported `.config.json` will contain:
@@ -57,14 +59,6 @@ The exported `.config.json` will contain:
 ```
 
 This allows Moonraker to activate the spool automatically before heating begins.
-
-## Setup
-
-```sh
-python3 -m venv venv
-. venv/bin/activate
-pip install -r requirements.txt
-```
 
 ## New Template Variable
 
@@ -92,11 +86,34 @@ Use the helper script:
 ./create_template_files.py -s orcaslicer -v
 ```
 
+## Moonraker Integration
+
+To synchronize spool changes at runtime, use the [spool2klipper](https://github.com/bofh69/spool2klipper) Moonraker agent. It listens for spool change events and updates the `active_filament` variable in Klipper, ensuring the correct spool is selected when printing.
+
+### Example Klipper Macro in `printer.cfg`
+
+```cfg
+[gcode_macro SET_ACTIVE_SPOOL]
+variable_spool_id: 0
+gcode:
+    {% if params.ID is defined %}
+    SET_VARIABLE VARIABLE=active_filament VALUE={params.ID}
+    {% endif %}
+```
+
+## Multi-Variant Template Example
+
+The `--variants` option generates separate files per variant. In templates, you can branch on `sm2s.variant`. For example:
+
+```jinja
+"start_gcode": "{% if sm2s.variant == 'printer_big' %}SET_PRESSURE_ADVANCE={{extra.pressure_advance_big}}\n{% else %}SET_PRESSURE_ADVANCE={{extra.pressure_advance_small}}\n{% endif %}SET_ACTIVE_SPOOL ID={{ spool_id }}\nM109 S[first_layer_temperature]"
+```
+
 ## Contributing
 
 * Format with `make fmt`
 * Lint with `make lint`
-* PRs welcome for new slicers or advanced integrations
+* PRs welcome for new slicers, improved macros, or advanced integrations
 
 ## License
 
