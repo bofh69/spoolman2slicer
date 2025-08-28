@@ -3,6 +3,12 @@
 # SPDX-FileCopyrightText: 2025 Sebastian Andersson <sebastian@bittr.nu>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#   "appdirs==1.4.4",
+# ]
+# ///
 
 """
 Program to create template files from existing filament configuration
