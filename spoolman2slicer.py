@@ -187,7 +187,7 @@ def load_filaments_from_spoolman(url: str):
 def get_filament_filename(filament):
     """Returns the filament's config filename"""
     template = templates.get_template(FILENAME_TEMPLATE)
-    return args.dir + "/" + template.render(filament).strip()
+    return args.dir.removesuffix("/") + "/" + template.render(filament).strip()
 
 
 def get_cached_filename_from_filaments_id(filament):
@@ -213,7 +213,7 @@ def delete_filament(filament, is_update=False):
     """Delete the filament's file if no longer in use"""
     filename = get_cached_filename_from_filaments_id(filament)
 
-    if not filename in filename_usage:
+    if filename not in filename_usage:
         return
     filename_usage[filename] -= 1
     if filename_usage[filename] > 0:
