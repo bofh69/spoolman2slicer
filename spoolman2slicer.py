@@ -3,6 +3,16 @@
 # SPDX-FileCopyrightText: 2024 Sebastian Andersson <sebastian@bittr.nu>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#   "appdirs==1.4.4",
+#   "Jinja2==3.1.6",
+#   "requests==2.32.4",
+#   "websockets==12.0",
+# ]
+# ///
+
 
 """
 Program to load filaments from Spoolman and create slicer filament configuration.
