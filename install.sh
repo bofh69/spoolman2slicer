@@ -17,6 +17,7 @@
 #   Follow the interactive menu to install or create filament config files.
 #
 # License:
+#   SPDX-FileCopyrightText: Jose Tomas Milla <jtomas1298@gmail.com>
 #   SPDX-License-Identifier: MIT
 #
 # Notes:
