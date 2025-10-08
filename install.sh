@@ -59,8 +59,10 @@ function check_for_updates() {
         LOCAL=$(git rev-parse @)
         REMOTE=$(git rev-parse @{u})
         if [ "$LOCAL" != "$REMOTE" ]; then
-            echo -e "${BLUE}Updates available. Updating spoolman2slicer...${NC}"
-            git pull
+            echo -e "${BLUE}Updates available. Resetting local changes and pulling latest version...${NC}"
+            git reset --hard HEAD      
+            git clean -fd              
+            git pull --rebase
             source venv/bin/activate
             pip install -r requirements.txt --upgrade
             deactivate
@@ -171,14 +173,65 @@ function choose_slicer() {
 }
 
 # =========================
+# Function: Uninstall spoolman2slicer (clean everything)
+# =========================
+function uninstall_spoolman2slicer() {
+    echo -e "${RED}WARNING:${NC} This will completely remove spoolman2slicer, including source code, dependencies, configuration and generated profiles."
+    read -rp "Do you want to proceed with full uninstallation? (y/N): " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+        
+        # Remove spoolman2slicer source directory
+        if [ -d "$SP_DIR" ]; then
+            rm -rf "$SP_DIR"
+            echo -e "${GREEN}spoolman2slicer source directory removed (${SP_DIR}).${NC}"
+        else
+            echo -e "${YELLOW}No spoolman2slicer found in ${SP_DIR}.${NC}"
+        fi
+
+        # Remove configuration directory
+        if [ -d "$CONFIG_DIR" ]; then
+            rm -rf "$CONFIG_DIR"
+            echo -e "${GREEN}Configuration removed (${CONFIG_DIR}).${NC}"
+        else
+            echo -e "${YELLOW}No configuration found in ${CONFIG_DIR}.${NC}"
+        fi
+
+        # Remove last output directory if defined
+        if [ -n "$last_output_dir" ] && [ -d "$HOME/$last_output_dir" ]; then
+            rm -rf "$HOME/$last_output_dir"
+            echo -e "${GREEN}Filament profiles removed (${HOME}/${last_output_dir}).${NC}"
+        fi
+
+        echo -e "\n${GREEN}Full uninstallation completed.${NC}"
+    else
+        echo -e "${YELLOW}Uninstallation canceled.${NC}"
+    fi
+
+    read -rp "Press Enter to exit..."
+    exit 0
+}
+
+# =========================
 # Function: Main menu
 # =========================
+/*************  ✨ Windsurf Command ⭐  *************/
+# Show the main menu of spoolman2slicer setup script
+#
+# This function shows the main menu of the spoolman2slicer setup script.
+# It will continue to show the menu until the user selects the "Exit" option.
+#
+# The menu options are:
+#   1. Install spoolman2slicer
+#   2. Create filament configuration files
+#   3. Uninstall spoolman2slicer (clean everything)
+/*******  c84b53e3-0ca4-4e7a-9079-8b6d54356309  *******/
 function show_menu() {
     while true; do
         clear
         echo "===== spoolman2slicer Setup ====="
         echo "1 - Install spoolman2slicer"
         echo "2 - Create filament configuration files"
+        echo "3 - Uninstall spoolman2slicer (clean everything)"
         echo "0 - Exit"
         echo "================================="
         read -rp "Select an option: " option
@@ -186,6 +239,7 @@ function show_menu() {
         case $option in
             1) install_spoolman2slicer ;;
             2) choose_slicer ;;
+            3) uninstall_spoolman2slicer ;;
             0) echo "Exiting..."; exit 0 ;;
             *) echo -e "${RED}Invalid option.${NC}"; read -rp "Press Enter to continue..." ;;
         esac
