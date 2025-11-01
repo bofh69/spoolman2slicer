@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  spoolman2slicer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spoolman2slicer:latest
+    container_name: spoolman2slicer
+    restart: unless-stopped
+    environment:
+      - SPOOLMAN_URL=
+      - SLICER=prusaslicer
+    volumes:
+      - ./configs:/configs
