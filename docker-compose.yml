@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Sebastian Andersson <sebastian@bittr.nu>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
 version: '3.8'
 
 services:
@@ -5,11 +8,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: spoolman2slicer:latest
+    image: ghcr.io/bofh69/spoolman2slicer:latest #use :stage for the current 'main' branche or :latest for the latest stable release
     container_name: spoolman2slicer
     restart: unless-stopped
     environment:
+    #---------Update the following depending on your needs---------
       - SPOOLMAN_URL=
       - SLICER=prusaslicer
     volumes:
       - ./configs:/configs
+    #--------Use this for advanced CLI arguments (adapt as needed):------------------
+    #entrypoint: [ "sh", "-c", "python3 ./spoolman2slicer.py -U -d /configs -s ${SLICER} -u ${SPOOLMAN_URL}" ]

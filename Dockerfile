@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Sebastian Andersson <sebastian@bittr.nu>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 FROM python:3.9.25-slim-trixie
 
 COPY [".", "."]
