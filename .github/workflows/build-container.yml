@@ -1,0 +1,36 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: ["main", "dev"]
+    tags: ['v*']
+
+permissions:
+  packages: write
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Environment Variables
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "DEPLOY_ENV=stage" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+          echo "DEPLOY_ENV=dev" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          echo "DEPLOY_ENV=latest" >> $GITHUB_ENV
+          fi
+
+      - name: Build Docker image
+        run: docker build . --file ./Dockerfile --tag ghcr.io/bofh69/spoolman2slicer:$DEPLOY_ENV
+
+      - name: Log in to GitHub Docker Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push Docker image to GitHub Packages
+        run: docker push ghcr.io/bofh69/spoolman2slicer:$DEPLOY_ENV

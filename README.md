@@ -79,6 +79,18 @@ options:
                         ones
 ```
 
+## Usage Docker-Compose
+
+Update the Environment Variables and mount points in docker-compose and run:
+```sh
+  docker-compose up -d
+```
+
+for advanced cli arguments use:
+```
+  entrypoint: [ "sh", "-c", "python3 ./spoolman2slicer.py #AddYourArgumentsHere" ]
+```
+
 ## Prepare for running
 
 Run:
