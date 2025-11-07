@@ -376,16 +376,22 @@ async def connect_updates():
     await asyncio.gather(connect_filament_updates(), connect_spool_updates())
 
 
-if args.delete_all:
-    delete_all_filaments()
+def main():
+    """Main function to run the spoolman2slicer tool"""
+    if args.delete_all:
+        delete_all_filaments()
 
-try:
-    load_and_update_all_filaments(args.url)
-except requests.exceptions.ConnectionError as ex:
-    print("Could not connect to SpoolMan:")
-    print(ex)
-    sys.exit(1)
+    try:
+        load_and_update_all_filaments(args.url)
+    except requests.exceptions.ConnectionError as ex:
+        print("Could not connect to SpoolMan:")
+        print(ex)
+        sys.exit(1)
 
-if args.updates:
-    print("Waiting for updates...")
-    asyncio.run(connect_updates())
+    if args.updates:
+        print("Waiting for updates...")
+        asyncio.run(connect_updates())
+
+
+if __name__ == "__main__":
+    main()

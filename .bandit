@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2025 Sebastian Andersson <sebastian@bittr.nu>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Bandit configuration file
+# https://bandit.readthedocs.io/en/latest/config.html
+
+exclude_dirs:
+  - ./tests
+  - ./venv
+  - ./.venv
+  - ./.tox
+  - ./.git
+  - ./__pycache__
