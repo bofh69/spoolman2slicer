@@ -91,9 +91,24 @@ for advanced cli arguments use:
   entrypoint: [ "sh", "-c", "python3 ./spoolman2slicer.py #AddYourArgumentsHere" ]
 ```
 
-## Prepare for running
+## Installation
 
-Run:
+### From PyPI (Recommended)
+
+The easiest way to install spoolman2slicer is from PyPI:
+
+```sh
+pip install spoolman2slicer
+```
+
+After installation, you can run it directly:
+```sh
+spoolman2slicer -s orcaslicer -d ~/.config/OrcaSlicer/user/default/filament/
+```
+
+### From Source
+
+If you want to run from source, clone the repository and run:
 ```sh
 python3 -m venv venv
 . venv/bin/activate

@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2025 Sebastian Andersson <sebastian@bittr.nu>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+include README.md
+include LICENSE
+include requirements.txt
+recursive-include templates-orcaslicer *
+recursive-include templates-prusaslicer *
+recursive-include templates-superslicer *
