@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: 2025 Sebastian Andersson <sebastian@bittr.nu>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spoolman2slicer"
+dynamic = ["version"]
+description = "Export active Spoolman spools' data to filament configuration files for 3D printer slicers"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "GPL-3.0-or-later"
+authors = [
+    {name = "Sebastian Andersson", email = "sebastian@bittr.nu"}
+]
+keywords = ["spoolman", "3d-printing", "slicer", "orcaslicer", "prusaslicer", "superslicer"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Printing",
+]
+dependencies = [
+    "appdirs==1.4.4",
+    "Jinja2==3.1.6",
+    "requests==2.32.4",
+    "websockets==12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/bofh69/spoolman2slicer"
+Repository = "https://github.com/bofh69/spoolman2slicer"
+Issues = "https://github.com/bofh69/spoolman2slicer/issues"
+
+[project.scripts]
+spoolman2slicer = "spoolman2slicer:main"
+create-template-files = "create_template_files:main"
+
+[tool.setuptools]
+packages = []
+py-modules = ["spoolman2slicer", "create_template_files"]
+
+[tool.setuptools.dynamic]
+version = {attr = "spoolman2slicer.VERSION"}
+
+[tool.setuptools.data-files]
+"share/spoolman2slicer/templates-orcaslicer" = ["templates-orcaslicer/*"]
+"share/spoolman2slicer/templates-prusaslicer" = ["templates-prusaslicer/*"]
+"share/spoolman2slicer/templates-superslicer" = ["templates-superslicer/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v"
