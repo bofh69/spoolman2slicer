@@ -35,26 +35,22 @@ Note: For the first release, you may need to manually create the project on PyPI
 
 To publish a new release:
 
-1. **Create and push a version tag:**
-   ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
-
-2. **Create a GitHub Release (optional but recommended):**
+1. **Create a GitHub Release:**
    - Go to https://github.com/bofh69/spoolman2slicer/releases/new
-   - Select the tag you just created
-   - Add release notes describing the changes
-   - Publish the release
+   - Create a new tag in the format `vX.Y.Z` (e.g., `v0.1.0`)
+   - Add a release title and description with release notes
+   - Click "Publish release"
 
-3. **Automatic Publishing:**
+   Note: Creating the release will automatically create the git tag, so you don't need to create and push the tag separately.
+
+2. **Automatic Publishing:**
    The GitHub Actions workflow will automatically:
-   - Trigger when a tag matching `v*` is pushed or a release is published
+   - Trigger when the release is published
    - Update the version in Python files using `update_version.sh`
    - Build the package (source distribution and wheel)
    - Publish to PyPI using trusted publishing
 
-4. **Verify the release:**
+3. **Verify the release:**
    - Check the GitHub Actions workflow run at https://github.com/bofh69/spoolman2slicer/actions
    - Verify the package appears on PyPI at https://pypi.org/project/spoolman2slicer/
 
