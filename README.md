@@ -20,6 +20,36 @@ configuration files for:
 
 The filament configuration files are created from templates.
 
+## Table of Contents
+
+<!--TOC-->
+
+- [Spoolman to slicer config generator](#spoolman-to-slicer-config-generator)
+  - [Intro](#intro)
+  - [The workflow](#the-workflow)
+    - [Files from filaments](#files-from-filaments)
+    - [Files from spools](#files-from-spools)
+  - [Usage](#usage)
+  - [Installation](#installation)
+    - [From PyPI (Recommended)](#from-pypi-recommended)
+    - [Using Docker/Docker-Compose](#using-dockerdocker-compose)
+    - [From Source](#from-source)
+  - [Configuring the filament config templates](#configuring-the-filament-config-templates)
+    - [Intro](#intro-1)
+    - [Where the files are read from](#where-the-files-are-read-from)
+    - [Available variables in the templates](#available-variables-in-the-templates)
+    - [Creating templates from existing config](#creating-templates-from-existing-config)
+    - [Writing the templates](#writing-the-templates)
+  - [Generating for multiple printers, the variants argument](#generating-for-multiple-printers-the-variants-argument)
+  - [Running examples](#running-examples)
+    - [Ubuntu & OrcaSlicer](#ubuntu--orcaslicer)
+    - [Ubuntu & PrusaSlicer](#ubuntu--prusaslicer)
+    - [Ubuntu & SuperSlicer](#ubuntu--superslicer)
+    - [MacOs & OrcaSlicer](#macos--orcaslicer)
+  - [Development](#development)
+
+<!--TOC-->
+
 ## The workflow
 
 ### Files from filaments
@@ -31,7 +61,7 @@ filament configuration based on the filament.
 
 The next time you start the slicer you will see the available filaments.
 
-The default templates contain a "filament_start_gcode" field, `ASSERT_ACTIVE_FILAMENT ID={{id}}`,
+The templates contain a "filament_start_gcode" field, `ASSERT_ACTIVE_FILAMENT ID={{id}}`,
 which comes from
 [this file](https://github.com/bofh69/nfc2klipper/blob/v0.0.4/klipper-spoolman.cfg)
 in my other repo, [nfc2klipper](https://github.com/bofh69/nfc2klipper).
@@ -54,15 +84,12 @@ A different workflow is possible and supported by spoolman2slicer.
 
 Instead of letting the slicer's generated gcode to verify that the right
 filament has been loaded (no matter which spool it comes from), one
-can make it set the spool instead during print start.
-
-That can be done by changing the templates's "filament_start_gcode" field
-to "SET_ACTIVE_SPOOL ID={{spool.id}}" and then generate one filament file
-per spool.
+can make it set the spool in Klipper during the start of the print.
 
 The `--create-per-spool` command line option causes spoolman2slicer
 to generate one filament configuration file per spool, one for the most
-used spool or one for the latest used spool.
+used spool or one for the latest used spool.  The default templates will then use
+"SET_ACTIVE_SPOOL ID={{spool.id}}" in the "filament_start_gcode" field.
 
 When creating one file for every spool, it uses the `filename_for_spool.template`
 file to create the filenames, otherwise the `filename.template` file
@@ -77,8 +104,9 @@ the fields from the Spoolman's spool object.
 you. You can also add an extra field in Spoolman's config for the spools
 and use that field here, ie `{{spool.extra.my_label}}`.
 
-You should also update the "name" field in the templates to
-use different names for different spools in a similar way.
+The default template files also use `- {{spool.id}}` at
+the end of the "name" field in the templates that use a name.
+If you update the filename template, update the name field too.
 
 
 ## Usage
@@ -112,18 +140,6 @@ options:
                         'most-recent': one file per filament for the spool being most recently used.
 ```
 
-## Usage Docker-Compose
-
-Update the Environment Variables and mount points in docker-compose and run:
-```sh
-  docker-compose up -d
-```
-
-for advanced cli arguments use:
-```
-  entrypoint: [ "sh", "-c", "python3 ./spoolman2slicer.py #AddYourArgumentsHere" ]
-```
-
 ## Installation
 
 ### From PyPI (Recommended)
@@ -131,23 +147,49 @@ for advanced cli arguments use:
 The easiest way to install spoolman2slicer is from PyPI:
 
 ```sh
+python3 -m venv path-to-venv
+source path-to-venv/bin/activate
 pip install spoolman2slicer
 ```
 
-After installation, you can run it directly:
+The default templates files are then under `venv/share/spoolman2slicer`.
+
+`spoolman2slicer` is then runable from the virtual environment:
 ```sh
-spoolman2slicer -s orcaslicer -d ~/.config/OrcaSlicer/user/default/filament/
+source path-to-venv/bin/active
+spoolman2slicer
 ```
+or
+```sh
+path-to-venv/bin/spoolman2slicer
+```
+
+
+### Using Docker/Docker-Compose
+
+spoolman2slicer can be run from docker.
+
+Included is a Dockerfile and docker-compose config. Before using it,
+update the environment variables and mount points in docker-compose and
+run:
+```sh
+  docker-compose up -d
+```
+
+for other arguments to the command, use:
+```
+  entrypoint: [ "sh", "-c", "python3 ./spoolman2slicer.py #AddYourArgumentsHere" ]
+```
+
 
 ### From Source
 
 If you want to run from source, clone the repository and run:
 ```sh
 python3 -m venv venv
-. venv/bin/activate
+source venv/bin/activate
 pip install -r requirements.txt
 ```
-
 
 ## Configuring the filament config templates
 
@@ -159,7 +201,7 @@ such a template for the configuration files' names.
 
 ### Where the files are read from
 
-The templates are stored with the filaments' material's name in
+The templates are read with the filaments' material's name from
 `<configdir>/spoolman2slicer/templates-<slicer>/<material>.<suffix>.template`.
 
 `<configdir>` depends on the operating system:
@@ -202,7 +244,7 @@ The available variables, and their values, can be printed by spoolman2slicer whe
 the filament is about to be written. Use the `-v` argument as argument
 to spoolman2slicer when it is started.
 
-With my Spoolman install the output can look like this (after pretty printing it):
+Output can look like this (after pretty printing it):
 ```python
 {
   'id': 17,
@@ -273,7 +315,7 @@ the first layer temperatures.
 
 ### Writing the templates
 
-The default templates as well as the generated template files are based
+The default templates as well as the generated template files were based
 on my settings. They assume there is an extra
 Spoolman filament field defined called "pressure_advance" and sets the
 pressure advance settings based on it. The Orca Slicer files also assumes
@@ -297,12 +339,13 @@ per spool, you probably want the spool's lot-nr or location in the name
 instead of the default, which is the id number of the spool.
 
 You should also have a `default.<suffix>.template` file (or two with
-OrcaSlicer, one for the .info file as well). It will be used if there is no
-material specific template file. I've just copied the PLA templates.
+OrcaSlicer, one for the .info file as well). It/they will be used if there is no
+material specific template file. The default file is just a copy of
+the default PLA template.
 
 
-The templates are quite advanced. Follow the link above to jinja2 to
-read its documentation.
+The template's format supports advanced features. Follow the link above
+to jinja2 to read its documentation.
 
 The [Jinja Playground](https://github.com/bofh69/jinja-playground) program can help
 when editing the templates, by providing instant feedback.
@@ -313,8 +356,8 @@ when editing the templates, by providing instant feedback.
 When using the `--variants` argument, it should have two or more more
 values, separated by commas. Ie `--variants printer_small,printer_big`.
 
-spoolman2slicer then generates one set of files per value.
-Each time `sm2s.variant` will have one of the given values.
+spoolman2slicer then generates one set of files per given value.
+Each time `sm2s.variant` will have one of the values.
 
 The templates can check the variable and output different fields or values depending on it.
 Ie:
@@ -326,8 +369,9 @@ The default `filename*.template` files uses the variant variable to put
 the variant first in the filename, if given. The other template files don't use it.
 
 
+## Running examples
 
-## Run
+When installed from pip, remove use `spoolman2slicer` instead of `./spoolman2slicer.py`.
 
 ### Ubuntu & OrcaSlicer
 ```sh
