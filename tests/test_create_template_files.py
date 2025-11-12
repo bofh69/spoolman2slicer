@@ -89,7 +89,9 @@ class TestReadIniFile:
     def test_read_ini_file_ignores_comments(self, tmp_path):
         """Test that comments are ignored"""
         ini_file = tmp_path / "test.ini"
-        ini_file.write_text("# This is a comment\n" "key1 = value1\n" "# Another comment\n")
+        ini_file.write_text(
+            "# This is a comment\n" "key1 = value1\n" "# Another comment\n"
+        )
 
         config = create_template_files.read_ini_file(str(ini_file))
 
@@ -257,9 +259,7 @@ class TestGetFilamentPath:
 
     def test_get_filament_path_nonexistent(self):
         """Test with non-existent directory"""
-        args = type(
-            "Args", (), {"dir": "/nonexistent/path", "slicer": "superslicer"}
-        )()
+        args = type("Args", (), {"dir": "/nonexistent/path", "slicer": "superslicer"})()
 
         with pytest.raises(SystemExit):
             create_template_files.get_filament_path(args)
@@ -300,16 +300,14 @@ class TestCopyFilamentTemplateFiles:
         source_dir = tmp_path / "templates-superslicer"
         source_dir.mkdir()
         (source_dir / "filename.template").write_text("{{name}}.{{sm2s.slicer_suffix}}")
-        (source_dir / "filename_for_spool.template").write_text("{{name}}.{{sm2s.slicer_suffix}}.{{spool.id}}")
+        (source_dir / "filename_for_spool.template").write_text(
+            "{{name}}.{{sm2s.slicer_suffix}}.{{spool.id}}"
+        )
 
         args = type("Args", (), {"slicer": "superslicer"})()
 
-        with patch(
-            "create_template_files.os.path.dirname", return_value=str(tmp_path)
-        ):
-            create_template_files.copy_filament_template_files(
-                args, str(template_dir)
-            )
+        with patch("create_template_files.os.path.dirname", return_value=str(tmp_path)):
+            create_template_files.copy_filament_template_files(args, str(template_dir))
 
         assert (template_dir / "filename.template").exists()
         assert (template_dir / "filename_for_spool.template").exists()
@@ -366,9 +364,11 @@ class TestMain:
             },
         )()
 
-        with patch("create_template_files.parse_args", return_value=args), patch(
-            "create_template_files.user_config_dir", return_value=str(tmp_path)
-        ), patch("create_template_files.os.path.dirname", return_value=str(tmp_path)):
+        with (
+            patch("create_template_files.parse_args", return_value=args),
+            patch("create_template_files.user_config_dir", return_value=str(tmp_path)),
+            patch("create_template_files.os.path.dirname", return_value=str(tmp_path)),
+        ):
             # Create source templates dir
             source_templates = tmp_path / "templates-superslicer"
             source_templates.mkdir()

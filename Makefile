@@ -13,6 +13,7 @@ REUSE:=$(VENV)/bin/reuse
 PYTEST:=$(VENV)/bin/pytest
 
 SRC=$(wildcard *.py)
+SRC_TEST=$(wildcard tests/*.py)
 
 help:
 	@echo Available targets:
@@ -37,7 +38,7 @@ $(PYTEST): $(VENV_TIMESTAMP)
 	$(PIP) install -r requirements-dev.txt
 
 fmt: $(BLACK)
-	$(BLACK) $(SRC)
+	$(BLACK) $(SRC) $(SRC_TEST)
 
 lint: $(PYLINT)
 	$(PYLINT) $(SRC)

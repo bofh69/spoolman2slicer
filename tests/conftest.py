@@ -114,7 +114,7 @@ def temp_template_dir():
         # Create filename template
         filename_template = Path(tmpdir) / "filename.template"
         filename_template.write_text(
-            "{% if sm2s.variant != \"\" %}\n"
+            '{% if sm2s.variant != "" %}\n'
             "{{sm2s.variant}} - {{vendor.name}} - {{name}}.{{sm2s.slicer_suffix}}\n"
             "{% else %}\n"
             "{{vendor.name}} - {{name}}.{{sm2s.slicer_suffix}}\n"
@@ -130,8 +130,8 @@ def temp_template_dir():
             "filament_cost = {{price}}\n"
             "filament_density = {{density}}\n"
             "filament_diameter = {{diameter}}\n"
-            "filament_settings_id = \"{{id}}\"\n"
-            "filament_vendor = \"{{vendor.name}}\"\n"
+            'filament_settings_id = "{{id}}"\n'
+            'filament_vendor = "{{vendor.name}}"\n'
             "temperature = {{settings_extruder_temp|int}}\n"
             "bed_temperature = {{settings_bed_temp|int}}\n"
         )
