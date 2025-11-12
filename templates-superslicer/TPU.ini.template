@@ -85,7 +85,7 @@ overhangs_fan_speed = -1
 perimeter_fan_speed = -1
 slowdown_below_layer_time = 20
 solid_infill_fan_speed = -1
-start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE ADVANCE={{extra.pressure_advance|default(0)|float}}\nASSERT_ACTIVE_FILAMENT ID={{id}}\n"
+start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE ADVANCE={{extra.pressure_advance|default(0)|float}}\n{% if spool.id %}SET_ACTIVE_SPOOL = {{spool.id}}{% else %}ASSERT_ACTIVE_FILAMENT ID={{id}}{% endif %}\n"
 support_material_fan_speed = -1
 support_material_interface_fan_speed = -1
 temperature = {{settings_extruder_temp|int}}

@@ -37,6 +37,7 @@ VERSION = "0.0.2-3-gdf67a39"
 DEFAULT_TEMPLATE_PREFIX = "default."
 DEFAULT_TEMPLATE_SUFFIX = ".template"
 FILENAME_TEMPLATE = "filename.template"
+FILENAME_FOR_SPOOL_TEMPLATE = "filename_for_spool.template"
 
 ORCASLICER = "orcaslicer"
 PRUSASLICER = "prusaslicer"
@@ -44,7 +45,7 @@ SLICER = "slic3r"
 SUPERSLICER = "superslicer"
 
 parser = argparse.ArgumentParser(
-    description="Fetches filaments from Spoolman and creates slicer filament config files.",
+    description="Fetches data from Spoolman and creates slicer filament config files.",
 )
 
 parser.add_argument("--version", action="version", version="%(prog)s " + VERSION)
@@ -101,6 +102,15 @@ parser.add_argument(
     help="delete all filament configs before adding existing ones",
 )
 
+parser.add_argument(
+    "--create-per-spool",
+    choices=["all", "least-left", "most-recent"],
+    help="create one output file per spool instead of per filament. "
+    "'all': one file per spool. "
+    "'least-left': one file per filament for the spool having the least filament left. "
+    "'most-recent': one file per filament for the spool being most recently used.",
+)
+
 args = parser.parse_args()
 
 config_dir = user_config_dir(appname="spoolman2slicer", appauthor=False, roaming=True)
@@ -130,7 +140,7 @@ if not os.path.exists(template_path):
                 "\n"
                 "Install them with:\n"
                 "\n"
-                "mkdir -p '{config_dir}'\n"
+                f"mkdir -p '{config_dir}'\n"
                 f"cp -r '{script_dir}'/templates-* '{config_dir}/'\n"
             ),
             file=sys.stderr,
@@ -154,8 +164,8 @@ filament_id_to_content = {}
 filename_usage = {}
 
 
-def add_sm2s_to_filament(filament, suffix, variant):
-    """Adds the sm2s object to filament"""
+def add_sm2s_to_filament(filament, suffix, variant, spool=None):
+    """Adds the sm2s object and spool field to filament"""
     sm2s = {
         "name": parser.prog,
         "version": VERSION,
@@ -166,6 +176,8 @@ def add_sm2s_to_filament(filament, suffix, variant):
         "spoolman_url": args.url,
     }
     filament["sm2s"] = sm2s
+    # Add spool field (empty dict if not provided)
+    filament["spool"] = spool if spool is not None else {}
 
 
 def get_config_suffix():
@@ -186,7 +198,13 @@ def load_filaments_from_spoolman(url: str):
 
 def get_filament_filename(filament):
     """Returns the filament's config filename"""
-    template = templates.get_template(FILENAME_TEMPLATE)
+    # Use filename_for_spool template when in "all" mode
+    template_name = (
+        FILENAME_FOR_SPOOL_TEMPLATE
+        if args.create_per_spool == "all"
+        else FILENAME_TEMPLATE
+    )
+    template = templates.get_template(template_name)
     return args.dir.removesuffix("/") + "/" + template.render(filament).strip()
 
 
@@ -299,16 +317,91 @@ def write_filament(filament):
         print()
 
 
-def load_and_update_all_filaments(url: str):
-    """Load the filaments from Spoolman and store them in the files"""
-    spools = load_filaments_from_spoolman(url + "/api/v1/spool")
-
+def process_filaments_default(spools):
+    """Process filaments in default mode: one file per filament (with empty spool dict)"""
     for spool in spools:
         filament = spool["filament"]
         for suffix in get_config_suffix():
             for variant in args.variants.split(","):
                 add_sm2s_to_filament(filament, suffix, variant)
                 write_filament(filament)
+
+
+def process_filaments_per_spool_all(spools):
+    """Process filaments in 'all' mode: one file per non-archived spool"""
+    for spool in spools:
+        # Skip archived spools
+        if spool.get("archived", False):
+            continue
+        filament = spool["filament"].copy()  # Make a copy to avoid mutation
+        for suffix in get_config_suffix():
+            for variant in args.variants.split(","):
+                add_sm2s_to_filament(filament, suffix, variant, spool)
+                write_filament(filament)
+
+
+def select_spool_by_least_left(spool_list):
+    """Select spool with lowest spool_weight, tie-break by lowest id"""
+    return min(
+        spool_list,
+        key=lambda s: (s.get("spool_weight", float("inf")), s["id"]),
+    )
+
+
+def select_spool_by_most_recent(spool_list):
+    """Select spool with highest last_used, tie-break by lowest id"""
+
+    def last_used_key(s):
+        last_used = s.get("last_used")
+        if not last_used:
+            # Empty/None goes to the end (lowest priority)
+            return ("", s["id"])
+        return (last_used, -s["id"])  # Negative for descending order on tie
+
+    return max(spool_list, key=last_used_key)
+
+
+def process_filaments_per_spool_selected(spools, selector_func):
+    """
+    Process filaments by selecting one spool per filament.
+
+    Args:
+        spools: List of spools from Spoolman
+        selector_func: Function to select which spool to use for each filament
+    """
+    # Group spools by filament ID
+    filament_to_spools = {}
+    for spool in spools:
+        # Skip archived spools
+        if spool.get("archived", False):
+            continue
+        filament_id = spool["filament"]["id"]
+        if filament_id not in filament_to_spools:
+            filament_to_spools[filament_id] = []
+        filament_to_spools[filament_id].append(spool)
+
+    # For each filament, select the appropriate spool
+    for spool_list in filament_to_spools.values():
+        selected_spool = selector_func(spool_list)
+        filament = selected_spool["filament"].copy()
+        for suffix in get_config_suffix():
+            for variant in args.variants.split(","):
+                add_sm2s_to_filament(filament, suffix, variant, selected_spool)
+                write_filament(filament)
+
+
+def load_and_update_all_filaments(url: str):
+    """Load the filaments from Spoolman and store them in the files"""
+    spools = load_filaments_from_spoolman(url + "/api/v1/spool")
+
+    if args.create_per_spool == "all":
+        process_filaments_per_spool_all(spools)
+    elif args.create_per_spool == "least-left":
+        process_filaments_per_spool_selected(spools, select_spool_by_least_left)
+    elif args.create_per_spool == "most-recent":
+        process_filaments_per_spool_selected(spools, select_spool_by_most_recent)
+    else:
+        process_filaments_default(spools)
 
 
 def handle_filament_update(filament):

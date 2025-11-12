@@ -198,7 +198,10 @@ class TestUpdateConfigSettings:
         args = type("Args", (), {"slicer": create_template_files.ORCASLICER})()
         updated = create_template_files.update_config_settings(args, config)
 
-        assert updated["name"] == "{{name}}"
+        assert (
+            updated["name"]
+            == "{% if spool.id %}{{name}} - {{spool.id}}{% else %}{{name}}{% endif %}"
+        )
         assert updated["filament_type"] == ["{{material}}"]
         assert updated["filament_cost"] == ["{{price}}"]
         assert updated["nozzle_temperature"] == ["{{settings_extruder_temp|int}}"]
@@ -285,10 +288,10 @@ class TestCreateTemplatePath:
         assert template_dir.exists()
 
 
-class TestCopyFilamentTemplateFile:
+class TestCopyFilamentTemplateFiles:
     """Test copying filename template file"""
 
-    def test_copy_filename_template(self, tmp_path):
+    def test_copy_filename_templates(self, tmp_path):
         """Test copying filename.template if missing"""
         template_dir = tmp_path / "templates-test"
         template_dir.mkdir()
@@ -297,23 +300,27 @@ class TestCopyFilamentTemplateFile:
         source_dir = tmp_path / "templates-superslicer"
         source_dir.mkdir()
         (source_dir / "filename.template").write_text("{{name}}.{{sm2s.slicer_suffix}}")
+        (source_dir / "filename_for_spool.template").write_text("{{name}}.{{sm2s.slicer_suffix}}.{{spool.id}}")
 
         args = type("Args", (), {"slicer": "superslicer"})()
 
         with patch(
             "create_template_files.os.path.dirname", return_value=str(tmp_path)
         ):
-            create_template_files.copy_filament_template_file(
+            create_template_files.copy_filament_template_files(
                 args, str(template_dir)
             )
 
         assert (template_dir / "filename.template").exists()
+        assert (template_dir / "filename_for_spool.template").exists()
 
     def test_copy_filename_template_already_exists(self, tmp_path):
         """Test that existing filename.template is not overwritten"""
         template_dir = tmp_path / "templates-test"
         template_dir.mkdir()
         existing_template = template_dir / "filename.template"
+        existing_template.write_text("existing content")
+        existing_template = template_dir / "filename_for_spool.template"
         existing_template.write_text("existing content")
 
         args = type("Args", (), {"slicer": "superslicer"})()
@@ -367,6 +374,9 @@ class TestMain:
             source_templates.mkdir()
             (source_templates / "filename.template").write_text(
                 "{{name}}.{{sm2s.slicer_suffix}}"
+            )
+            (source_templates / "filename_for_spool.template").write_text(
+                "{{name}}.{{sm2s.slicer_suffix}}.{{spool.id}}"
             )
 
             create_template_files.main()
