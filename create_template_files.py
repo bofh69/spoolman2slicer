@@ -135,14 +135,21 @@ def create_template_path(template_path):
         os.makedirs(template_path)
 
 
-def copy_filament_template_file(args, template_path):
+def copy_filament_template_files(args, template_path):
     """Copy the default filename template, if missing"""
     filename_template_file = f"{template_path}/filename.template"
     if not os.path.exists(filename_template_file):
         script_dir = os.path.dirname(__file__)
         shutil.copy(
             f"{script_dir}/templates-{args.slicer}/filename.template",
-            f"{template_path}/filename.template",
+            filename_template_file,
+        )
+    filename_template_file = f"{template_path}/filename_for_spool.template"
+    if not os.path.exists(filename_template_file):
+        script_dir = os.path.dirname(__file__)
+        shutil.copy(
+            f"{script_dir}/templates-{args.slicer}/filename_for_spool.template",
+            filename_template_file,
         )
 
 
@@ -198,10 +205,13 @@ def update_config_settings(args, config):
             "filament_diameter": ["{{diameter}}"],
             "filament_density": ["{{density}}"],
             "filament_settings_id": ["{{id}}"],
-            "filament_start_gcode": ["ASSERT_ACTIVE_FILAMENT ID={{id}}"],
+            "filament_start_gcode": [
+                "{% if spool.id %}SET_ACTIVE_SPOOL ID={{spool.id}}{% else %}"
+                + "ASSERT_ACTIVE_FILAMENT ID={{id}}{% endif %}"
+            ],
             "pressure_advance": ["{{extra.pressure_advance|default(0)|float}}"],
             "filament_vendor": ["{{vendor.name}}"],
-            "name": "{{name}}",
+            "name": "{% if spool.id %}{{name}} - {{spool.id}}{% else %}{{name}}{% endif %}",
             "nozzle_temperature": ["{{settings_extruder_temp|int}}"],
             "nozzle_temperature_initial_layer": ["{{settings_extruder_temp|int + 5}}"],
             "cool_plate_temp": ["{{settings_bed_temp|int}}"],
@@ -229,8 +239,11 @@ def update_config_settings(args, config):
             "first_layer_bed_temperature": "{{settings_bed_temp|int + 10}}",
             "first_layer_temperature": "{{settings_extruder_temp|int + 10}}",
             "start_filament_gcode": '"; Filament gcode\n'
-            + "SET_PRESSURE_ADVANCE ADVANCE={{extra.pressure_advance|default(0)|float}}\n"
-            + 'ASSERT_ACTIVE_FILAMENT ID={{id}}\n"',
+            + "{% if extra.pressure_advace %}"
+            + "SET_PRESSURE_ADVANCE ADVANCE="
+            + "{{extra.pressure_advance|default(0)|float}}\n{% endif %}"
+            + "{% if spool.id %}SET_ACTIVE_SPOOL ID={{spool.id}}"
+            + '{% else %}ASSERT_ACTIVE_FILAMENT ID={{id}}{% endif %}\n"',
             "temperature": "{{settings_extruder_temp|int}}",
         }.items():
             if key in config:
@@ -253,7 +266,7 @@ def main():
 
     create_template_path(template_path)
 
-    copy_filament_template_file(args, template_path)
+    copy_filament_template_files(args, template_path)
 
     if args.slicer == ORCASLICER:
         suffix = ".json"

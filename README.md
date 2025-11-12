@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2024 Sebastian Andersson <sebastian@bittr.nu>
+SPDX-FileCopyrightText: 2024-2025 Sebastian Andersson <sebastian@bittr.nu>
 
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
@@ -11,58 +11,85 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## Intro
 
-A python program to export active Spoolman spools' data to filament
-configurations files for:
+*spoolman2slicer* is a program to export Spoolman's data to filament
+configuration files for:
 
 * [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer)
 * [PrusaSlicer](https://www.prusa3d.com/page/prusaslicer_424/)
 * [SuperSlicer](https://github.com/supermerill/SuperSlicer)
 
-It is easy be extended it to support more slicers.
-
-The filament configuration files are based on templates. My templates
-are included in the repo, but you should make your own based on your
-settings. See below for how to do that.
-
-<!--
-It should be possible to use it with
-[slic3r](https://github.com/slic3r/Slic3r)
-and [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer) too, but there are no included templates for them.
--->
+The filament configuration files are created from templates.
 
 ## The workflow
+
+### Files from filaments
 
 You add your spools' manufacturers, filaments and the spools to Spoolman.
 
 For each filament that has at least one active spool, spoolman2slicer creates a
-filament configuration.
+filament configuration based on the filament.
 
 The next time you start the slicer you will see the available filaments.
 
-My templates contain a "filament_start_gcode" command, `ASSERT_ACTIVE_FILAMENT ID={{id}}`,
+The default templates contain a "filament_start_gcode" field, `ASSERT_ACTIVE_FILAMENT ID={{id}}`,
 which comes from
-[this file](https://github.com/bofh69/nfc2klipper/blob/v0.0.4/klipper-spoolman.cfg) in
-my other repo, [nfc2klipper](https://github.com/bofh69/nfc2klipper).
-It will run whenever the print starts to use that filament.
+[this file](https://github.com/bofh69/nfc2klipper/blob/v0.0.4/klipper-spoolman.cfg)
+in my other repo, [nfc2klipper](https://github.com/bofh69/nfc2klipper).
 
-That macro checks that the `active_filament` variable is the same as the choosen filament.
+That macro checks that the `active_filament` variable is the same as
+the choosen filament.
 
-The `active_filament` variable is set by first calling `SET_ACTIVE_FILAMENT ID=` and the id.
-That is called automatically by nfc2klipper.
+The `active_filament` variable is set by first calling `SET_ACTIVE_FILAMENT ID=`
+and the id. That is called automatically by `nfc2klipper`.
 
-There is a Moonraker agent [spool2klipper](https://github.com/bofh69/spool2klipper)
-that can be used to update the active_filament variable whenever the spool is changed
-in moonraker (via frontends, code macros) etc.
+If not using `nfc2klipper`, there is a Moonraker agent
+[spool2klipper](https://github.com/bofh69/spool2klipper)
+that can be used to update the active_filament variable whenever
+the spool is changed in moonraker (via frontends, code macros) etc.
+
+
+### Files from spools
+
+A different workflow is possible and supported by spoolman2slicer.
+
+Instead of letting the slicer's generated gcode to verify that the right
+filament has been loaded (no matter which spool it comes from), one
+can make it set the spool instead during print start.
+
+That can be done by changing the templates's "filament_start_gcode" field
+to "SET_ACTIVE_SPOOL ID={{spool.id}}" and then generate one filament file
+per spool.
+
+The `--create-per-spool` command line option causes spoolman2slicer
+to generate one filament configuration file per spool, one for the most
+used spool or one for the latest used spool.
+
+When creating one file for every spool, it uses the `filename_for_spool.template`
+file to create the filenames, otherwise the `filename.template` file
+is used to create the filenames.
+
+The included `filename_for_spool.template` simply appends the spool's id
+to the filename. That's often not very helpful for selecting the right
+spool in the slicer. Depending on the data you've added to the spool's
+different fields could be better. The `{{spool}}` field contains all
+the fields from the Spoolman's spool object.
+`{{spool.lot_nr}}` or `{{spool.location}}` might be better options for
+you. You can also add an extra field in Spoolman's config for the spools
+and use that field here, ie `{{spool.extra.my_label}}`.
+
+You should also update the "name" field in the templates to
+use different names for different spools in a similar way.
 
 
 ## Usage
 
-```sh
+```text
 usage: spoolman2slicer.py [-h] [--version] -d DIR
                           [-s {orcaslicer,prusaslicer,slic3r,superslicer}]
                           [-u URL] [-U] [-v] [-V VALUE1,VALUE2..] [-D]
+                          [--create-per-spool {all,least-left,most-recent}]
 
-Fetches filaments from Spoolman and creates slicer filament config files.
+Fetches data from Spoolman and creates slicer filament config files.
 
 options:
   -h, --help            show this help message and exit
@@ -71,12 +98,18 @@ options:
   -s {orcaslicer,prusaslicer,slic3r,superslicer}, --slicer {orcaslicer,prusaslicer,slic3r,superslicer}
                         the slicer
   -u URL, --url URL     URL for the Spoolman installation
-  -U, --updates         keep running and update filament configs if they'reupdated in Spoolman
+  -U, --updates         keep running and update filament configs if they're
+                        updated in Spoolman
   -v, --verbose         verbose output
   -V VALUE1,VALUE2.., --variants VALUE1,VALUE2..
                         write one template per value, separated by comma
   -D, --delete-all      delete all filament configs before adding existing
                         ones
+  --create-per-spool {all,least-left,most-recent}
+                        create one output file per spool instead of per filament.
+                        'all': one file per spool.
+                        'least-left': one file per filament for the spool having the least filament left.
+                        'most-recent': one file per filament for the spool being most recently used.
 ```
 
 ## Usage Docker-Compose
@@ -151,6 +184,10 @@ The variables available to use in the templates comes from the return
 data from Spoolman's filament request, described
 [here](https://donkie.github.io/Spoolman/#tag/filament/operation/Get_filament_filament__filament_id__get).
 
+When using the `--create-per-spool` argument, the `spool` field
+contains Spoolman's spool's fields, as described
+[here](https://donkie.github.io/Spoolman/#tag/spool/operation/Find_spool_spool_get).
+
 spoolman2slicer also adds its own fields under the `sm2s` field:
 * name - the name of the tool's program file.
 * version - the version of the tool.
@@ -217,13 +254,14 @@ If the program doesn't find the slicers' config dir, use the -d option:
 ./create_template_files.py -s orcaslicer -v -d "path/to/slicers/filament/config/dir"
 ```
 
-If that's needed, please create/update a github issue with your operating
-system, the slicer and the path where you found the filament config files.
+If that's needed, please create/update a github issue with into about
+your operating system, the slicer and the path where you found
+the filament config files.
 
 ---
 
 If needed, the program will create the templates' config dir and
-copy the `filename.template` file there.
+copy the `filename*.template` files there.
 
 For every filament config file in the slicer, it will create a template
 file for its material, unless the material already has a template file.
@@ -252,9 +290,11 @@ above) is written as: `{{vendor.name}}`. Be careful to use the same style as
 the original file. If the file wrote `"Gilford"`, remember to keep the
 `"` characters around the variable.
 
-There is one special template file, the `filename.template`. It is used to create
-the name of the generated files. Just use the default one, unless you
-want different styles for your filenames.
+There are two special template files, the `filename.template` and
+the `filename_for_spool.template`. They are used to create the name of
+the generated files. The default ones work, but if creating config files
+per spool, you probably want the spool's lot-nr or location in the name
+instead of the default, which is the id number of the spool.
 
 You should also have a `default.<suffix>.template` file (or two with
 OrcaSlicer, one for the .info file as well). It will be used if there is no
@@ -282,8 +322,9 @@ Ie:
 start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE={% if sm2s.variant == "printer_big %}{{extra.pressure_advance_big|default(0)|float}}{% else %}"{{extra.pressure_advance_small|default(0)|float}}{% endif %}\n"
 ```
 
-The default `filename.template` file uses the variant variable to put
-the variant first in the filename, if given, but the other template files don't use it.
+The default `filename*.template` files uses the variant variable to put
+the variant first in the filename, if given. The other template files don't use it.
+
 
 
 ## Run

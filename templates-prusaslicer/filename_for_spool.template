@@ -1,0 +1,5 @@
+{% if sm2s.variant != "" %}
+{{sm2s.variant}} - {{vendor.name}} - {{name}} - {{spool.id}}.{{sm2s.slicer_suffix}}
+{% else %}
+{{vendor.name}} - {{name}} - {{spool.id}}.{{sm2s.slicer_suffix}}
+{% endif %}

@@ -25,7 +25,7 @@
         "{{id}}"
     ],
     "filament_start_gcode": [
-        "ASSERT_ACTIVE_FILAMENT ID={{id}}"
+        "{% if spool.id %}SET_ACTIVE_SPOOL ID={{spool.id}}{% else %}ASSERT_ACTIVE_FILAMENT ID={{id}}{% endif %}"
     ],
 {% if extra.pressure_advance %}
     "enable_pressure_advance": [
@@ -41,7 +41,7 @@
     "from": "User",
     "inherits": "Voron Generic ASA",
     "is_custom_defined": "0",
-    "name": "{{name}}",
+    "name": "{{name}}{% if spool.id %} - {{spool.id}}{% endif %}",
     "nozzle_temperature": [
         "{{settings_extruder_temp|int}}"
     ],

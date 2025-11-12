@@ -77,5 +77,5 @@ overhang_fan_speed_1 = 0
 overhang_fan_speed_2 = 0
 overhang_fan_speed_3 = 0
 slowdown_below_layer_time = 20
-start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE ADVANCE={{extra.pressure_advance|default(0)|float}}\nASSERT_ACTIVE_FILAMENT ID={{id}}\n"
+start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE ADVANCE={{extra.pressure_advance|default(0)|float}}\n{% if spool.id %}SET_ACTIVE_SPOOL ID={{spool.id}}{% else %}ASSERT_ACTIVE_FILAMENT ID={{id}}{% endif %}\n"
 temperature = {{settings_extruder_temp|int}}

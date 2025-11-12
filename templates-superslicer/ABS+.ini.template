@@ -78,6 +78,6 @@ max_speed_reduction = 90%
 min_fan_speed = 50
 min_print_speed = 10
 slowdown_below_layer_time = 15
-start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE ADVANCE={{extra.pressure_advance|default(0)|float}}\nASSERT_ACTIVE_FILAMENT ID={{id}}\n"
+start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE ADVANCE={{extra.pressure_advance|default(0)|float}}\n{% if spool.id %}SET_ACTIVE_SPOOL = {{spool.id}}{% else %}ASSERT_ACTIVE_FILAMENT ID={{id}}{% endif %}\n"
 temperature = {{settings_extruder_temp|int}}
 top_fan_speed = -1
