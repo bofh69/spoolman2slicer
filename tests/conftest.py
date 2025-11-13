@@ -121,6 +121,16 @@ def temp_template_dir():
             "{% endif %}\n"
         )
 
+        # Create filename_for_spool template
+        filename_for_spool_template = Path(tmpdir) / "filename_for_spool.template"
+        filename_for_spool_template.write_text(
+            '{% if sm2s.variant != "" %}\n'
+            "{{sm2s.variant}} - {{vendor.name}} - {{name}} - {{spool.id}}.{{sm2s.slicer_suffix}}\n"
+            "{% else %}\n"
+            "{{vendor.name}} - {{name}} - {{spool.id}}.{{sm2s.slicer_suffix}}\n"
+            "{% endif %}\n"
+        )
+
         # Create default.ini.template for SuperSlicer/PrusaSlicer
         default_ini = Path(tmpdir) / "default.ini.template"
         default_ini.write_text(
