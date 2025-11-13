@@ -11,7 +11,7 @@
 * [PrusaSlicer](https://www.prusa3d.com/page/prusaslicer_424/)
 * [SuperSlicer](https://github.com/supermerill/SuperSlicer)
 
-This fork enhances the original functionality by **injecting the correct Spoolman spool ID automatically into the filament `start_gcode`**:
+This fork of [Spoolman2Slicer](https://github.com/bofh69/spoolman2slicer) changes the default functionality by **injecting the Spoolman spool ID into the filament `start_gcode`** instead of the filament's ID:
 
 ```gcode
 SET_ACTIVE_SPOOL ID=<spool_id>
@@ -23,7 +23,7 @@ This enables seamless integration with [Moonraker](https://moonraker.readthedocs
 
 * Fetches active spools from Spoolman
 * Auto-generates slicer-compatible filament profiles via Jinja2 templates
-* Injects correct `SET_ACTIVE_SPOOL ID=<spool_id>` per filament
+* Injects `SET_ACTIVE_SPOOL ID=<spool_id>` per filament
 * Compatible with OrcaSlicer, PrusaSlicer, SuperSlicer
 * Supports multiple printer variants
 * Can generate templates from existing slicer configs
