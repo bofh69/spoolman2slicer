@@ -46,7 +46,7 @@ The filament configuration files are created from templates.
     - [Ubuntu & PrusaSlicer](#ubuntu--prusaslicer)
     - [Ubuntu & SuperSlicer](#ubuntu--superslicer)
     - [MacOs & OrcaSlicer](#macos--orcaslicer)
-  - [Development](#development)
+  - [Contributing](#contributing)
 
 <!--TOC-->
 
@@ -395,7 +395,6 @@ When installed from pip, remove use `spoolman2slicer` instead of `./spoolman2sli
 
 See the other options above.
 
-## Development
+## Contributing
 
-Please format the code with `make fmt`, run the tests with `make test`
-and lint it with `make lint` before making a PR.
+Interested in contributing to spoolman2slicer? Please check out our [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute to the project.
