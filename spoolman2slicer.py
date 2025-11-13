@@ -314,18 +314,38 @@ def get_filament_filename(filament):
     return args.dir.removesuffix("/") + "/" + template.render(filament).strip()
 
 
+def get_filename_cache_key(filament):
+    """
+    Generate cache key for filament filename.
+    
+    Uses spool ID when in "all" mode, otherwise uses filament ID.
+    """
+    if args.create_per_spool == "all" and filament.get("spool", {}).get("id"):
+        return f"spool-{filament['spool']['id']}-{filament['sm2s']['slicer_suffix']}"
+    return f"{filament['id']}-{filament['sm2s']['slicer_suffix']}"
+
+
+def get_content_cache_key(filament):
+    """
+    Generate cache key for filament content.
+    
+    Uses spool ID when in "all" mode, otherwise uses filament ID.
+    """
+    if args.create_per_spool == "all" and filament.get("spool", {}).get("id"):
+        return f"spool-{filament['spool']['id']}"
+    return str(filament["id"])
+
+
 def get_cached_filename_from_filaments_id(filament):
     """Returns the cached (old) filename for the filament"""
-    return filament_id_to_filename.get(
-        f"{filament['id']}-{filament['sm2s']['slicer_suffix']}"
-    )
+    cache_key = get_filename_cache_key(filament)
+    return filament_id_to_filename.get(cache_key)
 
 
 def set_cached_filename_from_filaments_id(filament, filename):
     """Stores the filename for the filament in a cache"""
-    filament_id_to_filename[f"{filament['id']}-{filament['sm2s']['slicer_suffix']}"] = (
-        filename
-    )
+    cache_key = get_filename_cache_key(filament)
+    filament_id_to_filename[cache_key] = filename
 
 
 def get_default_template_for_suffix(suffix):
@@ -371,7 +391,7 @@ def write_filament(filament):
     else:
         filename_usage[filename] = 1
 
-    filament_id = filament["id"]
+    content_cache_key = get_content_cache_key(filament)
 
     # old_filename = filament_id_to_filename.get(filament_id)
     old_filename = get_cached_filename_from_filaments_id(filament)
@@ -406,7 +426,7 @@ def write_filament(filament):
         print(filament)
 
     filament_text = template.render(filament)
-    old_filament_text = filament_id_to_content.get(filament_id)
+    old_filament_text = filament_id_to_content.get(content_cache_key)
 
     if old_filament_text == filament_text and old_filename == filename:
         if args.verbose:
@@ -417,7 +437,7 @@ def write_filament(filament):
 
     with open(filename, "w", encoding="utf-8") as cfg_file:
         print(filament_text, file=cfg_file)
-    filament_id_to_content[filament_id] = filament_text
+    filament_id_to_content[content_cache_key] = filament_text
 
     if args.verbose:
         print()
@@ -557,77 +577,81 @@ def handle_filament_update_msg(msg):
 async def connect_filament_updates():
     """Connect to Spoolman and receive updates to the filaments"""
     ws_url = "ws" + args.url[4::] + "/api/v1/filament"
-    try:
-        async for connection in connect(ws_url):
-            try:
-                async for msg in connection:
-                    try:
-                        parsed_msg = json.loads(msg)
-                        handle_filament_update_msg(parsed_msg)
-                    except json.JSONDecodeError as ex:
-                        print(
-                            f"WARNING: Failed to parse WebSocket message as JSON: {ex}",
-                            file=sys.stderr,
-                        )
-                        print(
-                            f"Message content (first 200 chars): {msg[:200]}",
-                            file=sys.stderr,
-                        )
-                        continue
-            # pylint: disable=broad-exception-caught  # Need to catch all to reconnect
-            except Exception as ex:
-                print(
-                    f"ERROR: WebSocket connection error for filament updates: {ex}",
-                    file=sys.stderr,
-                )
-                print("Will attempt to reconnect...", file=sys.stderr)
-                await asyncio.sleep(5)  # Wait before reconnecting
-    # pylint: disable=broad-exception-caught  # Need to catch all for proper error reporting
-    except Exception as ex:
-        print(
-            f"ERROR: Failed to connect to Spoolman WebSocket at {ws_url}",
-            file=sys.stderr,
-        )
-        print(f"Error: {ex}", file=sys.stderr)
-        raise
+    while True:  # Keep trying to connect indefinitely
+        try:
+            async for connection in connect(ws_url):
+                try:
+                    async for msg in connection:
+                        try:
+                            parsed_msg = json.loads(msg)
+                            handle_filament_update_msg(parsed_msg)
+                        except json.JSONDecodeError as ex:
+                            print(
+                                f"WARNING: Failed to parse WebSocket message as JSON: {ex}",
+                                file=sys.stderr,
+                            )
+                            print(
+                                f"Message content (first 200 chars): {msg[:200]}",
+                                file=sys.stderr,
+                            )
+                            continue
+                # pylint: disable=broad-exception-caught  # Need to catch all to reconnect
+                except Exception as ex:
+                    print(
+                        f"ERROR: WebSocket connection error for filament updates: {ex}",
+                        file=sys.stderr,
+                    )
+                    print("Will attempt to reconnect...", file=sys.stderr)
+                    await asyncio.sleep(5)  # Wait before reconnecting
+        # pylint: disable=broad-exception-caught  # Need to catch all for proper error reporting
+        except Exception as ex:
+            print(
+                f"ERROR: Failed to connect to Spoolman WebSocket at {ws_url}",
+                file=sys.stderr,
+            )
+            print(f"Error: {ex}", file=sys.stderr)
+            print("Will retry connection in 5 seconds...", file=sys.stderr)
+            await asyncio.sleep(5)  # Wait before retrying
 
 
 async def connect_spool_updates():
     """Connect to Spoolman and receive updates to the spools"""
     ws_url = "ws" + args.url[4::] + "/api/v1/spool"
-    try:
-        async for connection in connect(ws_url):
-            try:
-                async for msg in connection:
-                    try:
-                        parsed_msg = json.loads(msg)
-                        handle_spool_update_msg(parsed_msg)
-                    except json.JSONDecodeError as ex:
-                        print(
-                            f"WARNING: Failed to parse WebSocket message as JSON: {ex}",
-                            file=sys.stderr,
-                        )
-                        print(
-                            f"Message content (first 200 chars): {msg[:200]}",
-                            file=sys.stderr,
-                        )
-                        continue
-            # pylint: disable=broad-exception-caught  # Need to catch all to reconnect
-            except Exception as ex:
-                print(
-                    f"ERROR: WebSocket connection error for spool updates: {ex}",
-                    file=sys.stderr,
-                )
-                print("Will attempt to reconnect...", file=sys.stderr)
-                await asyncio.sleep(5)  # Wait before reconnecting
-    # pylint: disable=broad-exception-caught  # Need to catch all for proper error reporting
-    except Exception as ex:
-        print(
-            f"ERROR: Failed to connect to Spoolman WebSocket at {ws_url}",
-            file=sys.stderr,
-        )
-        print(f"Error: {ex}", file=sys.stderr)
-        raise
+    while True:  # Keep trying to connect indefinitely
+        try:
+            async for connection in connect(ws_url):
+                try:
+                    async for msg in connection:
+                        try:
+                            parsed_msg = json.loads(msg)
+                            handle_spool_update_msg(parsed_msg)
+                        except json.JSONDecodeError as ex:
+                            print(
+                                f"WARNING: Failed to parse WebSocket message as JSON: {ex}",
+                                file=sys.stderr,
+                            )
+                            print(
+                                f"Message content (first 200 chars): {msg[:200]}",
+                                file=sys.stderr,
+                            )
+                            continue
+                # pylint: disable=broad-exception-caught  # Need to catch all to reconnect
+                except Exception as ex:
+                    print(
+                        f"ERROR: WebSocket connection error for spool updates: {ex}",
+                        file=sys.stderr,
+                    )
+                    print("Will attempt to reconnect...", file=sys.stderr)
+                    await asyncio.sleep(5)  # Wait before reconnecting
+        # pylint: disable=broad-exception-caught  # Need to catch all for proper error reporting
+        except Exception as ex:
+            print(
+                f"ERROR: Failed to connect to Spoolman WebSocket at {ws_url}",
+                file=sys.stderr,
+            )
+            print(f"Error: {ex}", file=sys.stderr)
+            print("Will retry connection in 5 seconds...", file=sys.stderr)
+            await asyncio.sleep(5)  # Wait before retrying
 
 
 async def connect_updates():
@@ -644,22 +668,37 @@ def main():
         load_and_update_all_filaments(args.url)
     except requests.exceptions.ConnectionError:
         # Error message already printed by load_filaments_from_spoolman
-        sys.exit(1)
+        # In update mode, continue to websocket connection
+        if not args.updates:
+            sys.exit(1)
+        print("Continuing to websocket connection despite initial load failure...")
     except requests.exceptions.Timeout:
         # Error message already printed by load_filaments_from_spoolman
-        sys.exit(1)
+        # In update mode, continue to websocket connection
+        if not args.updates:
+            sys.exit(1)
+        print("Continuing to websocket connection despite initial load failure...")
     except requests.exceptions.HTTPError:
         # Error message already printed by load_filaments_from_spoolman
-        sys.exit(1)
+        # In update mode, continue to websocket connection
+        if not args.updates:
+            sys.exit(1)
+        print("Continuing to websocket connection despite initial load failure...")
     except json.JSONDecodeError:
         # Error message already printed by load_filaments_from_spoolman
-        sys.exit(1)
+        # In update mode, continue to websocket connection
+        if not args.updates:
+            sys.exit(1)
+        print("Continuing to websocket connection despite initial load failure...")
     # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
     except Exception as ex:
         print(f"ERROR: Unexpected error while loading filaments: {ex}", file=sys.stderr)
         if args.verbose:
             traceback.print_exc()
-        sys.exit(1)
+        # In update mode, continue to websocket connection
+        if not args.updates:
+            sys.exit(1)
+        print("Continuing to websocket connection despite initial load failure...")
 
     if args.updates:
         print("Waiting for updates...")
