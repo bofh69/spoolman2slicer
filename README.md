@@ -276,7 +276,7 @@ Output can look like this (after pretty printing it):
     'now_int': 1737885471,
     'slicer_suffix': 'ini',
     'variants': 'printer1',
-    'spoolman_url': 'http://mainsailos.local:7912'
+    'spoolman_url': 'http://localhost:7912'
   }
 }
 ```

@@ -103,6 +103,96 @@ class TestLoadFilaments:
             with pytest.raises(requests.exceptions.ConnectionError):
                 spoolman2slicer.load_filaments_from_spoolman("http://test.local:7912")
 
+    def test_load_filaments_with_retry_on_connection_error(self):
+        """Test that connection errors are retried with exponential backoff"""
+        with (
+            patch(
+                "requests.get",
+                side_effect=requests.exceptions.ConnectionError("Connection refused"),
+            ),
+            patch("time.sleep") as mock_sleep,
+        ):
+            with pytest.raises(requests.exceptions.ConnectionError):
+                spoolman2slicer.load_filaments_from_spoolman(
+                    "http://test.local:7912", max_retries=3
+                )
+
+            # Should have tried 3 times
+            assert (
+                mock_sleep.call_count == 2
+            )  # Sleep between retries (not after last one)
+            # Check exponential backoff: 1, 2 seconds
+            mock_sleep.assert_any_call(1)
+            mock_sleep.assert_any_call(2)
+
+    def test_load_filaments_timeout_with_retry(self):
+        """Test that timeout errors are retried"""
+        with (
+            patch(
+                "requests.get",
+                side_effect=requests.exceptions.Timeout("Request timeout"),
+            ),
+            patch("time.sleep") as mock_sleep,
+        ):
+            with pytest.raises(requests.exceptions.Timeout):
+                spoolman2slicer.load_filaments_from_spoolman(
+                    "http://test.local:7912", max_retries=3
+                )
+
+            # Should have tried 3 times
+            assert mock_sleep.call_count == 2
+
+    def test_load_filaments_http_error(self):
+        """Test handling of HTTP errors (no retry)"""
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            "404 Not Found", response=mock_response
+        )
+
+        with patch("requests.get", return_value=mock_response):
+            with pytest.raises(requests.exceptions.HTTPError):
+                spoolman2slicer.load_filaments_from_spoolman("http://test.local:7912")
+
+    def test_load_filaments_malformed_json(self, capsys):
+        """Test handling of malformed JSON responses"""
+        mock_response = Mock()
+        mock_response.text = "This is not valid JSON {{{["
+        mock_response.raise_for_status = Mock()  # No HTTP error
+
+        with patch("requests.get", return_value=mock_response):
+            with pytest.raises(json.JSONDecodeError):
+                spoolman2slicer.load_filaments_from_spoolman("http://test.local:7912")
+
+            # Check that error message was printed
+            captured = capsys.readouterr()
+            assert "ERROR: Failed to parse JSON response" in captured.err
+            assert "Response content" in captured.err
+
+    def test_load_filaments_success_after_retry(self, sample_spoolman_response):
+        """Test successful load after initial failure"""
+        mock_response = Mock()
+        mock_response.text = json.dumps(sample_spoolman_response)
+        mock_response.raise_for_status = Mock()
+
+        # Fail first two times, succeed on third
+        with (
+            patch(
+                "requests.get",
+                side_effect=[
+                    requests.exceptions.ConnectionError("Connection refused"),
+                    requests.exceptions.ConnectionError("Connection refused"),
+                    mock_response,
+                ],
+            ),
+            patch("time.sleep"),
+        ):
+            result = spoolman2slicer.load_filaments_from_spoolman(
+                "http://test.local:7912", max_retries=3
+            )
+            assert len(result) == 2
+            assert result[0]["id"] == 1
+
 
 class TestFilenameGeneration:
     """Test filament filename generation"""
