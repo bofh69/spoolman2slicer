@@ -23,8 +23,9 @@ import asyncio
 import json
 import os
 import platform
-import time
 import sys
+import time
+import traceback
 
 from appdirs import user_config_dir
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
@@ -38,6 +39,8 @@ DEFAULT_TEMPLATE_PREFIX = "default."
 DEFAULT_TEMPLATE_SUFFIX = ".template"
 FILENAME_TEMPLATE = "filename.template"
 FILENAME_FOR_SPOOL_TEMPLATE = "filename_for_spool.template"
+
+REQUEST_TIMEOUT_SECONDS = 10
 
 ORCASLICER = "orcaslicer"
 PRUSASLICER = "prusaslicer"
@@ -69,7 +72,7 @@ parser.add_argument(
     "-u",
     "--url",
     metavar="URL",
-    default="http://mainsailos.local:7912",
+    default="http://localhost:7912",
     help="URL for the Spoolman installation",
 )
 
@@ -190,10 +193,113 @@ def get_config_suffix():
     raise ValueError("That slicer is not yet supported")
 
 
-def load_filaments_from_spoolman(url: str):
-    """Load filaments json data from Spoolman"""
-    data = requests.get(url, timeout=10)
-    return json.loads(data.text)
+# pylint: disable=too-many-branches  # Complex error handling requires multiple branches
+def load_filaments_from_spoolman(url: str, max_retries: int = 3):
+    """
+    Load filaments json data from Spoolman with retry logic.
+
+    Args:
+        url: The URL to fetch data from
+        max_retries: Maximum number of retry attempts (default: 3)
+
+    Returns:
+        List of spool data from Spoolman
+
+    Raises:
+        requests.exceptions.ConnectionError: If connection fails after all retries
+        requests.exceptions.Timeout: If request times out after all retries
+        json.JSONDecodeError: If response is not valid JSON
+        requests.exceptions.HTTPError: If HTTP error occurs
+    """
+    last_exception = None
+
+    for attempt in range(max_retries):
+        try:
+            if args.verbose and attempt > 0:
+                print(f"Retry attempt {attempt + 1} of {max_retries}...")
+
+            response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
+            response.raise_for_status()  # Raise exception for HTTP errors
+
+            try:
+                return json.loads(response.text)
+            except json.JSONDecodeError as ex:
+                print(
+                    f"ERROR: Failed to parse JSON response from Spoolman at {url}",
+                    file=sys.stderr,
+                )
+                print(
+                    f"Response content (first 500 chars): {response.text[:500]}",
+                    file=sys.stderr,
+                )
+                raise json.JSONDecodeError(
+                    f"Invalid JSON response from Spoolman: {ex.msg}",
+                    ex.doc,
+                    ex.pos,
+                ) from ex
+
+        except requests.exceptions.ConnectionError as ex:
+            last_exception = ex
+            if args.verbose or attempt == max_retries - 1:
+                print(
+                    f"ERROR: Could not connect to Spoolman at {url}",
+                    file=sys.stderr,
+                )
+                print(f"Connection error: {ex}", file=sys.stderr)
+            if attempt < max_retries - 1:
+                wait_time = 2**attempt  # Exponential backoff: 1, 2, 4 seconds
+                if args.verbose:
+                    print(
+                        f"Waiting {wait_time} seconds before retry...", file=sys.stderr
+                    )
+                time.sleep(wait_time)
+            continue
+
+        except requests.exceptions.Timeout as ex:
+            last_exception = ex
+            if args.verbose or attempt == max_retries - 1:
+                print(
+                    f"ERROR: Request to Spoolman at {url} timed out after "
+                    f"{REQUEST_TIMEOUT_SECONDS} seconds",
+                    file=sys.stderr,
+                )
+            if attempt < max_retries - 1:
+                wait_time = 2**attempt
+                if args.verbose:
+                    print(
+                        f"Waiting {wait_time} seconds before retry...", file=sys.stderr
+                    )
+                time.sleep(wait_time)
+            continue
+
+        except requests.exceptions.HTTPError as ex:
+            print(
+                f"ERROR: HTTP error {ex.response.status_code} from Spoolman at {url}",
+                file=sys.stderr,
+            )
+            print(f"Error details: {ex}", file=sys.stderr)
+            raise
+
+    # If we get here, all retries failed
+    if isinstance(last_exception, requests.exceptions.ConnectionError):
+        print(
+            "\nPlease check:",
+            file=sys.stderr,
+        )
+        print("  1. Is Spoolman running?", file=sys.stderr)
+        print("  2. Is the URL correct?", file=sys.stderr)
+        print(f"  3. Can you access {url} in a web browser?", file=sys.stderr)
+        raise last_exception
+    if isinstance(last_exception, requests.exceptions.Timeout):
+        print(
+            "\nThe server is taking too long to respond.",
+            file=sys.stderr,
+        )
+        print("Please check if Spoolman is running and responsive.", file=sys.stderr)
+        raise last_exception
+
+    # Should never reach here, but just in case
+    raise RuntimeError(f"Failed to load data from {url} after {max_retries} attempts")
 
 
 def get_filament_filename(filament):
@@ -450,18 +556,78 @@ def handle_filament_update_msg(msg):
 
 async def connect_filament_updates():
     """Connect to Spoolman and receive updates to the filaments"""
-    async for connection in connect("ws" + args.url[4::] + "/api/v1/filament"):
-        async for msg in connection:
-            msg = json.loads(msg)
-            handle_filament_update_msg(msg)
+    ws_url = "ws" + args.url[4::] + "/api/v1/filament"
+    try:
+        async for connection in connect(ws_url):
+            try:
+                async for msg in connection:
+                    try:
+                        parsed_msg = json.loads(msg)
+                        handle_filament_update_msg(parsed_msg)
+                    except json.JSONDecodeError as ex:
+                        print(
+                            f"WARNING: Failed to parse WebSocket message as JSON: {ex}",
+                            file=sys.stderr,
+                        )
+                        print(
+                            f"Message content (first 200 chars): {msg[:200]}",
+                            file=sys.stderr,
+                        )
+                        continue
+            # pylint: disable=broad-exception-caught  # Need to catch all to reconnect
+            except Exception as ex:
+                print(
+                    f"ERROR: WebSocket connection error for filament updates: {ex}",
+                    file=sys.stderr,
+                )
+                print("Will attempt to reconnect...", file=sys.stderr)
+                await asyncio.sleep(5)  # Wait before reconnecting
+    # pylint: disable=broad-exception-caught  # Need to catch all for proper error reporting
+    except Exception as ex:
+        print(
+            f"ERROR: Failed to connect to Spoolman WebSocket at {ws_url}",
+            file=sys.stderr,
+        )
+        print(f"Error: {ex}", file=sys.stderr)
+        raise
 
 
 async def connect_spool_updates():
-    """Connect to Spoolman and receive updates to the filaments"""
-    async for connection in connect("ws" + args.url[4::] + "/api/v1/spool"):
-        async for msg in connection:
-            msg = json.loads(msg)
-            handle_spool_update_msg(msg)
+    """Connect to Spoolman and receive updates to the spools"""
+    ws_url = "ws" + args.url[4::] + "/api/v1/spool"
+    try:
+        async for connection in connect(ws_url):
+            try:
+                async for msg in connection:
+                    try:
+                        parsed_msg = json.loads(msg)
+                        handle_spool_update_msg(parsed_msg)
+                    except json.JSONDecodeError as ex:
+                        print(
+                            f"WARNING: Failed to parse WebSocket message as JSON: {ex}",
+                            file=sys.stderr,
+                        )
+                        print(
+                            f"Message content (first 200 chars): {msg[:200]}",
+                            file=sys.stderr,
+                        )
+                        continue
+            # pylint: disable=broad-exception-caught  # Need to catch all to reconnect
+            except Exception as ex:
+                print(
+                    f"ERROR: WebSocket connection error for spool updates: {ex}",
+                    file=sys.stderr,
+                )
+                print("Will attempt to reconnect...", file=sys.stderr)
+                await asyncio.sleep(5)  # Wait before reconnecting
+    # pylint: disable=broad-exception-caught  # Need to catch all for proper error reporting
+    except Exception as ex:
+        print(
+            f"ERROR: Failed to connect to Spoolman WebSocket at {ws_url}",
+            file=sys.stderr,
+        )
+        print(f"Error: {ex}", file=sys.stderr)
+        raise
 
 
 async def connect_updates():
@@ -476,14 +642,41 @@ def main():
 
     try:
         load_and_update_all_filaments(args.url)
-    except requests.exceptions.ConnectionError as ex:
-        print("Could not connect to SpoolMan:")
-        print(ex)
+    except requests.exceptions.ConnectionError:
+        # Error message already printed by load_filaments_from_spoolman
+        sys.exit(1)
+    except requests.exceptions.Timeout:
+        # Error message already printed by load_filaments_from_spoolman
+        sys.exit(1)
+    except requests.exceptions.HTTPError:
+        # Error message already printed by load_filaments_from_spoolman
+        sys.exit(1)
+    except json.JSONDecodeError:
+        # Error message already printed by load_filaments_from_spoolman
+        sys.exit(1)
+    # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
+    except Exception as ex:
+        print(f"ERROR: Unexpected error while loading filaments: {ex}", file=sys.stderr)
+        if args.verbose:
+            traceback.print_exc()
         sys.exit(1)
 
     if args.updates:
         print("Waiting for updates...")
-        asyncio.run(connect_updates())
+        try:
+            asyncio.run(connect_updates())
+        except KeyboardInterrupt:
+            print("\nShutting down gracefully...")
+            sys.exit(0)
+        # pylint: disable=broad-exception-caught  # Need to catch all websocket errors
+        except Exception as ex:
+            print(
+                f"\nERROR: Failed to maintain WebSocket connection: {ex}",
+                file=sys.stderr,
+            )
+            if args.verbose:
+                traceback.print_exc()
+            sys.exit(1)
 
 
 if __name__ == "__main__":
