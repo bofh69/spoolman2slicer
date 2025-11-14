@@ -50,6 +50,7 @@ FILAMENT_CONFIG_DIRS = {
     f"{OS_LINUX}-{ORCASLICER}": "~/.config/OrcaSlicer/user/default/filament",
     f"{OS_LINUX}-{PRUSASLICER}": "~/.var/app/com.prusa3d.PrusaSlicer/config/PrusaSlicer/filament",
     f"{OS_LINUX}-{SUPERSLICER}": "~/.config/SuperSlicer/filament",
+    f"{OS_LINUX}-{SLICER}": "~/.Slic3r/filament",
 }
 
 
@@ -57,6 +58,9 @@ def get_material(config, slicer):
     """Returns the filament config's material"""
     if slicer == ORCASLICER:
         return config.get("filament_type")[0]
+    if slicer == SLICER:
+        # Slic3r doesn't support materials
+        return "default"
     return config.get("filament_type")
 
 
@@ -283,6 +287,8 @@ def main():
     for filename in os.listdir(filament_path):
         filename = f"{filament_path}/{filename}"
         if filename.endswith(suffix):
+            if args.slicer == SLICER and filename.endswith("/My Settings.ini"):
+                continue
             if args.verbose:
                 print(f"Processing {filename}")
             config = load_config_file(args.slicer, filename)

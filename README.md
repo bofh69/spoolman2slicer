@@ -16,6 +16,7 @@ configuration files for:
 
 * [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer)
 * [PrusaSlicer](https://www.prusa3d.com/page/prusaslicer_424/)
+* [Slic3r](https://slic3r.org/)
 * [SuperSlicer](https://github.com/supermerill/SuperSlicer)
 
 The filament configuration files are created from templates.
