@@ -193,6 +193,30 @@ def get_config_suffix():
     raise ValueError("That slicer is not yet supported")
 
 
+def _log_error(message: str, details: str = None):
+    """
+    Log an error message to stderr.
+    
+    Args:
+        message: Main error message
+        details: Optional additional details
+    """
+    print(f"ERROR: {message}", file=sys.stderr)
+    if details and args.verbose:
+        print(f"  Details: {details}", file=sys.stderr)
+
+
+def _log_info(message: str):
+    """
+    Log an informational message if verbose mode is enabled.
+    
+    Args:
+        message: Message to log
+    """
+    if args.verbose:
+        print(f"INFO: {message}", file=sys.stderr)
+
+
 # pylint: disable=too-many-branches  # Complex error handling requires multiple branches
 def load_filaments_from_spoolman(url: str, max_retries: int = 3):
     """
@@ -215,22 +239,21 @@ def load_filaments_from_spoolman(url: str, max_retries: int = 3):
 
     for attempt in range(max_retries):
         try:
-            if args.verbose and attempt > 0:
-                print(f"Retry attempt {attempt + 1} of {max_retries}...")
+            if attempt > 0:
+                _log_info(f"Retry attempt {attempt + 1} of {max_retries}")
 
+            _log_info(f"Fetching data from {url}")
             response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
             response.raise_for_status()  # Raise exception for HTTP errors
 
             try:
-                return json.loads(response.text)
+                data = json.loads(response.text)
+                _log_info(f"Successfully loaded {len(data)} spools from Spoolman")
+                return data
             except json.JSONDecodeError as ex:
-                print(
-                    f"ERROR: Failed to parse JSON response from Spoolman at {url}",
-                    file=sys.stderr,
-                )
-                print(
-                    f"Response content (first 500 chars): {response.text[:500]}",
-                    file=sys.stderr,
+                _log_error(
+                    f"Failed to parse JSON response from Spoolman at {url}",
+                    f"Response (first 500 chars): {response.text[:500]}"
                 )
                 raise json.JSONDecodeError(
                     f"Invalid JSON response from Spoolman: {ex.msg}",
@@ -240,62 +263,46 @@ def load_filaments_from_spoolman(url: str, max_retries: int = 3):
 
         except requests.exceptions.ConnectionError as ex:
             last_exception = ex
-            if args.verbose or attempt == max_retries - 1:
-                print(
-                    f"ERROR: Could not connect to Spoolman at {url}",
-                    file=sys.stderr,
-                )
-                print(f"Connection error: {ex}", file=sys.stderr)
-            if attempt < max_retries - 1:
+            error_msg = f"Could not connect to Spoolman at {url}"
+            if attempt == max_retries - 1:
+                _log_error(error_msg, str(ex))
+                print("\nPlease check:", file=sys.stderr)
+                print("  1. Is Spoolman running?", file=sys.stderr)
+                print("  2. Is the URL correct?", file=sys.stderr)
+                print(f"  3. Can you access {url} in a web browser?", file=sys.stderr)
+            else:
+                _log_info(f"{error_msg} (attempt {attempt + 1}/{max_retries})")
                 wait_time = 2**attempt  # Exponential backoff: 1, 2, 4 seconds
-                if args.verbose:
-                    print(
-                        f"Waiting {wait_time} seconds before retry...", file=sys.stderr
-                    )
+                _log_info(f"Waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
             continue
 
         except requests.exceptions.Timeout as ex:
             last_exception = ex
-            if args.verbose or attempt == max_retries - 1:
-                print(
-                    f"ERROR: Request to Spoolman at {url} timed out after "
-                    f"{REQUEST_TIMEOUT_SECONDS} seconds",
-                    file=sys.stderr,
-                )
-            if attempt < max_retries - 1:
+            error_msg = (
+                f"Request to Spoolman at {url} timed out after "
+                f"{REQUEST_TIMEOUT_SECONDS} seconds"
+            )
+            if attempt == max_retries - 1:
+                _log_error(error_msg)
+                print("\nThe server is taking too long to respond.", file=sys.stderr)
+                print("Please check if Spoolman is running and responsive.", file=sys.stderr)
+            else:
+                _log_info(f"{error_msg} (attempt {attempt + 1}/{max_retries})")
                 wait_time = 2**attempt
-                if args.verbose:
-                    print(
-                        f"Waiting {wait_time} seconds before retry...", file=sys.stderr
-                    )
+                _log_info(f"Waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
             continue
 
         except requests.exceptions.HTTPError as ex:
-            print(
-                f"ERROR: HTTP error {ex.response.status_code} from Spoolman at {url}",
-                file=sys.stderr,
+            _log_error(
+                f"HTTP error {ex.response.status_code} from Spoolman at {url}",
+                str(ex)
             )
-            print(f"Error details: {ex}", file=sys.stderr)
             raise
 
     # If we get here, all retries failed
-    if isinstance(last_exception, requests.exceptions.ConnectionError):
-        print(
-            "\nPlease check:",
-            file=sys.stderr,
-        )
-        print("  1. Is Spoolman running?", file=sys.stderr)
-        print("  2. Is the URL correct?", file=sys.stderr)
-        print(f"  3. Can you access {url} in a web browser?", file=sys.stderr)
-        raise last_exception
-    if isinstance(last_exception, requests.exceptions.Timeout):
-        print(
-            "\nThe server is taking too long to respond.",
-            file=sys.stderr,
-        )
-        print("Please check if Spoolman is running and responsive.", file=sys.stderr)
+    if last_exception:
         raise last_exception
 
     # Should never reach here, but just in case
@@ -668,19 +675,24 @@ def main():
     # This is necessary because websocket payloads don't contain full vendor objects
     if args.updates:
         retry_delay = 5
+        _log_info("Update mode enabled - will retry initial load until successful")
         while True:
             try:
                 load_and_update_all_filaments(args.url)
+                _log_info("Initial data load successful")
                 break  # Success, proceed to websocket connection
             except (
                 requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout,
                 requests.exceptions.HTTPError,
                 json.JSONDecodeError,
-            ):
-                # Error message already printed by load_filaments_from_spoolman
+            ) as ex:
+                # Error details already logged by load_filaments_from_spoolman
                 print(
-                    f"Initial load failed in update mode. "
+                    f"Initial load failed in update mode: {type(ex).__name__}",
+                    file=sys.stderr,
+                )
+                print(
                     f"Retrying in {retry_delay} seconds...",
                     file=sys.stderr,
                 )
@@ -688,10 +700,7 @@ def main():
                 continue
             # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
             except Exception as ex:
-                print(
-                    f"ERROR: Unexpected error while loading filaments: {ex}",
-                    file=sys.stderr,
-                )
+                _log_error(f"Unexpected error while loading filaments: {ex}")
                 if args.verbose:
                     traceback.print_exc()
                 print(
@@ -704,21 +713,18 @@ def main():
         # Non-update mode: fail immediately on error
         try:
             load_and_update_all_filaments(args.url)
-        except requests.exceptions.ConnectionError:
-            # Error message already printed by load_filaments_from_spoolman
-            sys.exit(1)
-        except requests.exceptions.Timeout:
-            # Error message already printed by load_filaments_from_spoolman
-            sys.exit(1)
-        except requests.exceptions.HTTPError:
-            # Error message already printed by load_filaments_from_spoolman
-            sys.exit(1)
-        except json.JSONDecodeError:
-            # Error message already printed by load_filaments_from_spoolman
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.HTTPError,
+            json.JSONDecodeError,
+        ) as ex:
+            # Error details already logged by load_filaments_from_spoolman
+            _log_error(f"Failed to load filaments: {type(ex).__name__}")
             sys.exit(1)
         # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
         except Exception as ex:
-            print(f"ERROR: Unexpected error while loading filaments: {ex}", file=sys.stderr)
+            _log_error(f"Unexpected error while loading filaments: {ex}")
             if args.verbose:
                 traceback.print_exc()
             sys.exit(1)

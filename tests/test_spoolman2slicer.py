@@ -167,7 +167,6 @@ class TestLoadFilaments:
             # Check that error message was printed
             captured = capsys.readouterr()
             assert "ERROR: Failed to parse JSON response" in captured.err
-            assert "Response content" in captured.err
 
     def test_load_filaments_success_after_retry(self, sample_spoolman_response):
         """Test successful load after initial failure"""
