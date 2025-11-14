@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# SPDX-FileCopyrightText: 2024 Sebastian Andersson <sebastian@bittr.nu>
+# SPDX-FileCopyrightText: 2024-2025 Sebastian Andersson <sebastian@bittr.nu>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # /// script
@@ -31,6 +31,8 @@ from appdirs import user_config_dir
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import requests
 from websockets.client import connect
+
+from file_utils import atomic_write
 
 
 VERSION = "0.0.2-3-gdf67a39"
@@ -452,8 +454,7 @@ def write_filament(filament):
 
     print(f"Writing to: {filename}")
 
-    with open(filename, "w", encoding="utf-8") as cfg_file:
-        print(filament_text, file=cfg_file)
+    atomic_write(filename, filament_text)
     filament_id_to_content[content_cache_key] = filament_text
 
     if args.verbose:

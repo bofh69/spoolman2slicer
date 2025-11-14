@@ -387,3 +387,86 @@ class TestMain:
         assert pla_template.exists()
         content = pla_template.read_text()
         assert "{{material}}" in content
+
+
+class TestAtomicWrites:
+    """Test atomic write functionality"""
+
+    def test_atomic_write_creates_file(self, tmp_path):
+        """Test that atomic_write creates a file successfully"""
+        test_file = tmp_path / "test_atomic.txt"
+        test_content = "Hello, atomic world!"
+
+        create_template_files.atomic_write(str(test_file), test_content)
+
+        assert test_file.exists()
+        assert test_file.read_text() == test_content
+
+    def test_atomic_write_replaces_existing_file(self, tmp_path):
+        """Test that atomic_write replaces an existing file"""
+        test_file = tmp_path / "test_replace.txt"
+
+        # Create initial file
+        test_file.write_text("Original content")
+
+        # Replace with atomic write
+        new_content = "New atomic content"
+        create_template_files.atomic_write(str(test_file), new_content)
+
+        assert test_file.read_text() == new_content
+
+    def test_atomic_write_no_temp_files_left(self, tmp_path):
+        """Test that no temporary files are left after atomic write"""
+        test_file = tmp_path / "test_cleanup.txt"
+        test_content = "Content for cleanup test"
+
+        create_template_files.atomic_write(str(test_file), test_content)
+
+        # Check that no temporary files are left
+        files = list(tmp_path.iterdir())
+        temp_files = [f for f in files if f.name.startswith(".tmp_")]
+        assert len(temp_files) == 0
+
+    def test_store_config_uses_atomic_write_superslicer(self, tmp_path):
+        """Test that store_config uses atomic writes for SuperSlicer"""
+        template_file = tmp_path / "test.ini.template"
+        config = {
+            "filament_type": "PLA",
+            "temperature": "200",
+        }
+
+        create_template_files.store_config(
+            create_template_files.SUPERSLICER, str(template_file), config
+        )
+
+        # Verify file was created
+        assert template_file.exists()
+
+        # Verify no temp files left
+        temp_files = [f for f in tmp_path.iterdir() if f.name.startswith(".tmp_")]
+        assert len(temp_files) == 0
+
+    def test_store_config_uses_atomic_write_orcaslicer(self, tmp_path):
+        """Test that store_config uses atomic writes for OrcaSlicer"""
+        template_file = tmp_path / "test.json.template"
+        config = {
+            "filament_type": ["PLA"],
+            "nozzle_temperature": [200],
+        }
+
+        create_template_files.store_config(
+            create_template_files.ORCASLICER, str(template_file), config
+        )
+
+        # Verify file was created
+        assert template_file.exists()
+
+        # Verify content is valid JSON
+        content = template_file.read_text()
+        parsed = json.loads(content)
+        assert "_comment" in parsed
+        assert "filament_type" in parsed
+
+        # Verify no temp files left
+        temp_files = [f for f in tmp_path.iterdir() if f.name.startswith(".tmp_")]
+        assert len(temp_files) == 0

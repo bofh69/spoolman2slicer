@@ -47,7 +47,7 @@ create-template-files = "create_template_files:main"
 
 [tool.setuptools]
 packages = []
-py-modules = ["spoolman2slicer", "create_template_files"]
+py-modules = ["spoolman2slicer", "create_template_files", "file_utils"]
 
 [tool.setuptools.dynamic]
 version = {attr = "spoolman2slicer.VERSION"}
