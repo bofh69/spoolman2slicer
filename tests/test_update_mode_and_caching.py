@@ -388,4 +388,3 @@ class TestCachingForSpoolAll:
             spoolman2slicer.write_filament(filament1)
             captured = capsys.readouterr()
             assert "Same content, file not updated" in captured.out
-
