@@ -254,7 +254,7 @@ def update_config_settings(args, config):
             "temperature": "{{settings_extruder_temp|int}}",
         }.items():
             if key in config:
-                config[key] = value
+                config[key] = value.replace("\n", "\\n")
 
     return config
 
