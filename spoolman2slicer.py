@@ -166,6 +166,10 @@ filament_id_to_content = {}
 
 filename_usage = {}
 
+vendors_cache = {}  # id -> vendor dict
+filaments_cache = {}  # id -> filament dict
+spools_cache = {}  # id -> spool dict
+
 
 def add_sm2s_to_filament(filament, suffix, variant, spool=None):
     """Adds the sm2s object and spool field to filament"""
@@ -196,7 +200,7 @@ def get_config_suffix():
 def _log_error(message: str, details: str = None):
     """
     Log an error message to stderr.
-    
+
     Args:
         message: Main error message
         details: Optional additional details
@@ -209,12 +213,22 @@ def _log_error(message: str, details: str = None):
 def _log_info(message: str):
     """
     Log an informational message if verbose mode is enabled.
-    
+
+    Args:
+        message: Message to log
+    """
+    print(f"INFO: {message}")
+
+
+def _log_debug(message: str):
+    """
+    Log a debug message if verbose mode is enabled.
+
     Args:
         message: Message to log
     """
     if args.verbose:
-        print(f"INFO: {message}", file=sys.stderr)
+        print(f"DEBUG: {message}")
 
 
 # pylint: disable=too-many-branches  # Complex error handling requires multiple branches
@@ -242,7 +256,7 @@ def load_filaments_from_spoolman(url: str, max_retries: int = 3):
             if attempt > 0:
                 _log_info(f"Retry attempt {attempt + 1} of {max_retries}")
 
-            _log_info(f"Fetching data from {url}")
+            _log_debug(f"Fetching data from {url}")
             response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
             response.raise_for_status()  # Raise exception for HTTP errors
 
@@ -253,7 +267,7 @@ def load_filaments_from_spoolman(url: str, max_retries: int = 3):
             except json.JSONDecodeError as ex:
                 _log_error(
                     f"Failed to parse JSON response from Spoolman at {url}",
-                    f"Response (first 500 chars): {response.text[:500]}"
+                    f"Response (first 500 chars): {response.text[:500]}",
                 )
                 raise json.JSONDecodeError(
                     f"Invalid JSON response from Spoolman: {ex.msg}",
@@ -286,9 +300,12 @@ def load_filaments_from_spoolman(url: str, max_retries: int = 3):
             if attempt == max_retries - 1:
                 _log_error(error_msg)
                 print("\nThe server is taking too long to respond.", file=sys.stderr)
-                print("Please check if Spoolman is running and responsive.", file=sys.stderr)
+                print(
+                    "Please check if Spoolman is running and responsive.",
+                    file=sys.stderr,
+                )
             else:
-                _log_info(f"{error_msg} (attempt {attempt + 1}/{max_retries})")
+                _log_debug(f"{error_msg} (attempt {attempt + 1}/{max_retries})")
                 wait_time = 2**attempt
                 _log_info(f"Waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
@@ -296,8 +313,7 @@ def load_filaments_from_spoolman(url: str, max_retries: int = 3):
 
         except requests.exceptions.HTTPError as ex:
             _log_error(
-                f"HTTP error {ex.response.status_code} from Spoolman at {url}",
-                str(ex)
+                f"HTTP error {ex.response.status_code} from Spoolman at {url}", str(ex)
             )
             raise
 
@@ -324,7 +340,7 @@ def get_filament_filename(filament):
 def get_filename_cache_key(filament):
     """
     Generate cache key for filament filename.
-    
+
     Uses spool ID when in "all" mode, otherwise uses filament ID.
     """
     if args.create_per_spool == "all" and filament.get("spool", {}).get("id"):
@@ -335,7 +351,7 @@ def get_filename_cache_key(filament):
 def get_content_cache_key(filament):
     """
     Generate cache key for filament content.
-    
+
     Uses spool ID when in "all" mode, otherwise uses filament ID.
     """
     if args.create_per_spool == "all" and filament.get("spool", {}).get("id"):
@@ -400,10 +416,8 @@ def write_filament(filament):
 
     content_cache_key = get_content_cache_key(filament)
 
-    # old_filename = filament_id_to_filename.get(filament_id)
     old_filename = get_cached_filename_from_filaments_id(filament)
 
-    # filament_id_to_filename[filament_id] = filename
     set_cached_filename_from_filaments_id(filament, filename)
 
     if "material" in filament:
@@ -417,27 +431,23 @@ def write_filament(filament):
 
     try:
         template = templates.get_template(template_name)
-        if args.verbose:
-            print(f"Using {template_name} as template")
+        _log_debug(f"Using {template_name} as template")
     except TemplateNotFound:
         template_name = get_default_template_for_suffix(
             filament["sm2s"]["slicer_suffix"]
         )
         template = templates.get_template(template_name)
-        if args.verbose:
-            print("Using the default template")
+        _log_debug("Using the default template")
 
-    if args.verbose:
-        print(f"Rendering for filename: {filename}")
-        print("Fields for the template:")
-        print(filament)
+    _log_info(f"Rendering for filename: {filename}")
+    _log_debug("Fields for the template:")
+    _log_debug(filament)
 
     filament_text = template.render(filament)
     old_filament_text = filament_id_to_content.get(content_cache_key)
 
     if old_filament_text == filament_text and old_filename == filename:
-        if args.verbose:
-            print("Same content, file not updated")
+        _log_debug("Same content, file not updated")
         return
 
     print(f"Writing to: {filename}")
@@ -452,12 +462,20 @@ def write_filament(filament):
 
 def process_filaments_default(spools):
     """Process filaments in default mode: one file per filament (with empty spool dict)"""
+    # Find all filaments that have at least one spool referring to them
+    filament_ids_with_spools = set()
     for spool in spools:
-        filament = spool["filament"]
-        for suffix in get_config_suffix():
-            for variant in args.variants.split(","):
-                add_sm2s_to_filament(filament, suffix, variant)
-                write_filament(filament)
+        if not spool.get("archived", False) and "filament" in spool:
+            filament_ids_with_spools.add(spool["filament"]["id"])
+
+    # Process each filament that has spools
+    for filament_id in filament_ids_with_spools:
+        if filament_id in filaments_cache:
+            filament = filaments_cache[filament_id].copy()
+            for suffix in get_config_suffix():
+                for variant in args.variants.split(","):
+                    add_sm2s_to_filament(filament, suffix, variant)
+                    write_filament(filament)
 
 
 def process_filaments_per_spool_all(spools):
@@ -523,9 +541,57 @@ def process_filaments_per_spool_selected(spools, selector_func):
                 write_filament(filament)
 
 
+def load_and_cache_data(url: str):
+    """Load vendors, filaments, and spools from Spoolman and cache them"""
+    # pylint: disable=global-variable-not-assigned
+    global vendors_cache, filaments_cache, spools_cache
+
+    _log_debug("Loading vendors from Spoolman")
+    vendors_list = load_filaments_from_spoolman(url + "/api/v1/vendor")
+    vendors_cache = {vendor["id"]: vendor for vendor in vendors_list}
+    _log_info(f"Loaded {len(vendors_cache)} vendors")
+
+    _log_debug("Loading filaments from Spoolman")
+    filaments_list = load_filaments_from_spoolman(url + "/api/v1/filament")
+    # Build filament dicts with vendor references
+    for filament in filaments_list:
+        # If the filament API returns nested vendor object, use it
+        # Otherwise, look up vendor by vendor_id
+        if "vendor" not in filament:
+            vendor_id = filament.get("vendor_id")
+            if vendor_id and vendor_id in vendors_cache:
+                filament["vendor"] = vendors_cache[vendor_id]
+        filaments_cache[filament["id"]] = filament
+    _log_info(f"Loaded {len(filaments_cache)} filaments")
+
+    _log_debug("Loading spools from Spoolman")
+    spools_list = load_filaments_from_spoolman(url + "/api/v1/spool")
+    # Build spool dicts with filament references (which include vendor)
+    for spool in spools_list:
+        # If the spool API returns nested filament object, use it but ensure vendor is set
+        if "filament" in spool:
+            filament = spool["filament"]
+            if "vendor" not in filament:
+                vendor_id = filament.get("vendor_id")
+                if vendor_id and vendor_id in vendors_cache:
+                    filament["vendor"] = vendors_cache[vendor_id]
+            # Update filaments_cache with the nested filament to ensure consistency
+            filaments_cache[filament["id"]] = filament
+        else:
+            # If filament is not nested, look up by filament_id
+            filament_id = spool.get("filament_id")
+            if filament_id and filament_id in filaments_cache:
+                spool["filament"] = filaments_cache[filament_id]
+        spools_cache[spool["id"]] = spool
+    _log_info(f"Loaded {len(spools_cache)} spools")
+
+
 def load_and_update_all_filaments(url: str):
     """Load the filaments from Spoolman and store them in the files"""
-    spools = load_filaments_from_spoolman(url + "/api/v1/spool")
+    load_and_cache_data(url)
+
+    # Convert spools_cache to list for processing
+    spools = list(spools_cache.values())
 
     if args.create_per_spool == "all":
         process_filaments_per_spool_all(spools)
@@ -537,133 +603,266 @@ def load_and_update_all_filaments(url: str):
         process_filaments_default(spools)
 
 
-def handle_filament_update(filament):
-    """Handles update of a filament"""
-    for variant in args.variants.split(","):
-        for suffix in get_config_suffix():
-            add_sm2s_to_filament(filament, suffix, variant)
-            delete_filament(filament, is_update=True)
-            write_filament(filament)
+def _update_files_for_vendor_change(vendor):
+    """Helper to update files when a vendor changes"""
+    # Update all filaments that refer to this vendor
+    for filament in filaments_cache.values():
+        if filament.get("vendor", {}).get("id") == vendor["id"]:
+            filament["vendor"] = vendor
+            # Update all spools that refer to this filament
+            for spool in spools_cache.values():
+                if spool.get("filament", {}).get("id") == filament["id"]:
+                    spool["filament"] = filament
+                    # Update files if spool is active
+                    if not spool.get("archived", False):
+                        handle_spool_update(spool)
+
+
+def handle_vendor_update_msg(msg):
+    """Handles vendor update msgs received via WS"""
+    vendor = msg["payload"]
+
+    if msg["type"] == "added":
+        # Add to cache
+        vendors_cache[vendor["id"]] = vendor
+    elif msg["type"] == "updated":
+        # Update cache
+        vendors_cache[vendor["id"]] = vendor
+        _update_files_for_vendor_change(vendor)
+    elif msg["type"] == "deleted":
+        # No filament can refer it, remove it.
+        vendor_id = vendor["id"]
+        if vendor_id in vendors_cache:
+            del vendors_cache[vendor_id]
+    else:
+        _log_info(f"Got unknown vendor update msg: {msg}")
+
+
+def handle_filament_update_msg(msg):
+    """Handles filament update msgs received via WS"""
+    filament = msg["payload"]
+
+    if msg["type"] == "added":
+        # Add to cache with vendor reference
+        if "vendor" not in filament:
+            vendor_id = filament.get("vendor_id")
+            if vendor_id and vendor_id in vendors_cache:
+                filament["vendor"] = vendors_cache[vendor_id]
+        filaments_cache[filament["id"]] = filament
+    elif msg["type"] == "updated":
+        # Update cache
+        if "vendor" not in filament:
+            vendor_id = filament.get("vendor_id")
+            if vendor_id and vendor_id in vendors_cache:
+                filament["vendor"] = vendors_cache[vendor_id]
+        filaments_cache[filament["id"]] = filament
+        # Update all spools that refer to this filament
+        for spool in spools_cache.values():
+            if spool.get("filament", {}).get("id") == filament["id"]:
+                spool["filament"] = filament
+                # Update files if spool is active
+                if not spool.get("archived", False):
+                    handle_spool_update(spool)
+    elif msg["type"] == "deleted":
+        # Can't be deleted if spools are referencing it.
+        filament_id = filament["id"]
+        if filament_id in filaments_cache:
+            del filaments_cache[filament_id]
+    else:
+        _log_info(f"Got unknown filament update msg: {msg}")
+
+
+def handle_spool_update(spool):
+    """Update files for a spool based on current mode"""
+    if "filament" not in spool:
+        filament_id = spool.get("filament_id")
+        if filament_id and filament_id in filaments_cache:
+            spool["filament"] = filaments_cache[filament_id]
+
+    filament = spool.get("filament")
+    if not filament:
+        return
+
+    if args.create_per_spool == "all":
+        # One file per spool
+        if not spool.get("archived", False):
+            filament_copy = filament.copy()
+            for suffix in get_config_suffix():
+                for variant in args.variants.split(","):
+                    add_sm2s_to_filament(filament_copy, suffix, variant, spool)
+                    delete_filament(filament_copy, is_update=True)
+                    write_filament(filament_copy)
+    elif args.create_per_spool in ["least-left", "most-recent"]:
+        # Find all spools for this filament and reprocess
+        filament_id = filament["id"]
+        filament_spools = [
+            s
+            for s in spools_cache.values()
+            if s.get("filament", {}).get("id") == filament_id
+            and not s.get("archived", False)
+        ]
+
+        if filament_spools:
+            if args.create_per_spool == "least-left":
+                selected_spool = select_spool_by_least_left(filament_spools)
+            else:  # most-recent
+                selected_spool = select_spool_by_most_recent(filament_spools)
+
+            filament_copy = selected_spool["filament"].copy()
+            for suffix in get_config_suffix():
+                for variant in args.variants.split(","):
+                    add_sm2s_to_filament(filament_copy, suffix, variant, selected_spool)
+                    delete_filament(filament_copy, is_update=True)
+                    write_filament(filament_copy)
+        else:
+            # No active spools left, delete the file
+            filament_copy = filament.copy()
+            for suffix in get_config_suffix():
+                for variant in args.variants.split(","):
+                    add_sm2s_to_filament(filament_copy, suffix, variant)
+                    delete_filament(filament_copy)
+    else:
+        # Default mode: one file per filament
+        # Check if filament has any active spools
+        # (or if cache is empty, assume this is the active spool)
+        filament_id = filament["id"]
+        has_active_spools = len(
+            spools_cache
+        ) == 0 or any(  # Cache not populated (e.g., in tests or initial load)
+            s.get("filament", {}).get("id") == filament_id
+            and not s.get("archived", False)
+            for s in spools_cache.values()
+        )
+
+        if has_active_spools:
+            filament_copy = filament.copy()
+            for suffix in get_config_suffix():
+                for variant in args.variants.split(","):
+                    add_sm2s_to_filament(filament_copy, suffix, variant)
+                    delete_filament(filament_copy, is_update=True)
+                    write_filament(filament_copy)
+        else:
+            # No active spools, delete the file
+            filament_copy = filament.copy()
+            for suffix in get_config_suffix():
+                for variant in args.variants.split(","):
+                    add_sm2s_to_filament(filament_copy, suffix, variant)
+                    delete_filament(filament_copy)
 
 
 def handle_spool_update_msg(msg):
     """Handles spool update msgs received via WS"""
-
     spool = msg["payload"]
-    filament = spool["filament"]
-    if msg["type"] == "added":
-        for variant in args.variants.split(","):
-            for suffix in get_config_suffix():
-                add_sm2s_to_filament(filament, suffix, variant)
-                write_filament(filament)
-    elif msg["type"] == "updated":
-        handle_filament_update(filament)
-    elif msg["type"] == "deleted":
-        for variant in args.variants.split(","):
-            for suffix in get_config_suffix():
-                add_sm2s_to_filament(filament, suffix, variant)
-                delete_filament(filament)
-    else:
-        print(f"Got unknown filament update msg: {msg}")
-
-
-def handle_filament_update_msg(msg):
-    """Handles filamentspool update msgs received via WS"""
 
     if msg["type"] == "added":
-        pass
+        # Add to cache with filament reference
+        if "filament" not in spool:
+            filament_id = spool.get("filament_id")
+            if filament_id and filament_id in filaments_cache:
+                spool["filament"] = filaments_cache[filament_id]
+        # Only add to cache if spool has an id
+        if "id" in spool:
+            spools_cache[spool["id"]] = spool
+        # Update files
+        handle_spool_update(spool)
     elif msg["type"] == "updated":
-        filament = msg["payload"]
-        handle_filament_update(filament)
+        # Check if filament has changed (for default mode cleanup)
+        spool_id = spool.get("id")
+        old_spool = spools_cache.get(spool_id) if spool_id else None
+        old_filament = old_spool.get("filament") if old_spool else None
+
+        # Update cache
+        if "filament" not in spool:
+            filament_id = spool.get("filament_id")
+            if filament_id and filament_id in filaments_cache:
+                spool["filament"] = filaments_cache[filament_id]
+        # Only update cache if spool has an id
+        if "id" in spool:
+            spools_cache[spool["id"]] = spool
+
+        # If filament changed and we're in default mode, handle old filament cleanup
+        new_filament = spool.get("filament")
+        if (
+            old_filament
+            and new_filament
+            and old_filament.get("id") != new_filament.get("id")
+            and not args.create_per_spool
+        ):
+            # Check if old filament has any remaining active spools
+            old_filament_id = old_filament["id"]
+            has_remaining_spools = any(
+                s.get("filament", {}).get("id") == old_filament_id
+                and not s.get("archived", False)
+                for s in spools_cache.values()
+            )
+            if not has_remaining_spools:
+                # Delete old filament file
+                old_filament_copy = old_filament.copy()
+                for suffix in get_config_suffix():
+                    for variant in args.variants.split(","):
+                        add_sm2s_to_filament(old_filament_copy, suffix, variant)
+                        delete_filament(old_filament_copy)
+
+        # Update files for new filament
+        handle_spool_update(spool)
     elif msg["type"] == "deleted":
-        pass
+        # Remove from cache
+        spool_id = spool.get("id")
+        if spool_id and spool_id in spools_cache:
+            # Get spool before deletion for update handling
+            old_spool = spools_cache[spool_id]
+            del spools_cache[spool_id]
+            # Update files based on remaining spools
+            if "filament" in old_spool:
+                handle_spool_update(old_spool)
     else:
-        print(f"Got unknown filament update msg: {msg}")
-
-
-async def connect_filament_updates():
-    """Connect to Spoolman and receive updates to the filaments"""
-    ws_url = "ws" + args.url[4::] + "/api/v1/filament"
-    while True:  # Keep trying to connect indefinitely
-        try:
-            async for connection in connect(ws_url):
-                try:
-                    async for msg in connection:
-                        try:
-                            parsed_msg = json.loads(msg)
-                            handle_filament_update_msg(parsed_msg)
-                        except json.JSONDecodeError as ex:
-                            print(
-                                f"WARNING: Failed to parse WebSocket message as JSON: {ex}",
-                                file=sys.stderr,
-                            )
-                            print(
-                                f"Message content (first 200 chars): {msg[:200]}",
-                                file=sys.stderr,
-                            )
-                            continue
-                # pylint: disable=broad-exception-caught  # Need to catch all to reconnect
-                except Exception as ex:
-                    print(
-                        f"ERROR: WebSocket connection error for filament updates: {ex}",
-                        file=sys.stderr,
-                    )
-                    print("Will attempt to reconnect...", file=sys.stderr)
-                    await asyncio.sleep(5)  # Wait before reconnecting
-        # pylint: disable=broad-exception-caught  # Need to catch all for proper error reporting
-        except Exception as ex:
-            print(
-                f"ERROR: Failed to connect to Spoolman WebSocket at {ws_url}",
-                file=sys.stderr,
-            )
-            print(f"Error: {ex}", file=sys.stderr)
-            print("Will retry connection in 5 seconds...", file=sys.stderr)
-            await asyncio.sleep(5)  # Wait before retrying
-
-
-async def connect_spool_updates():
-    """Connect to Spoolman and receive updates to the spools"""
-    ws_url = "ws" + args.url[4::] + "/api/v1/spool"
-    while True:  # Keep trying to connect indefinitely
-        try:
-            async for connection in connect(ws_url):
-                try:
-                    async for msg in connection:
-                        try:
-                            parsed_msg = json.loads(msg)
-                            handle_spool_update_msg(parsed_msg)
-                        except json.JSONDecodeError as ex:
-                            print(
-                                f"WARNING: Failed to parse WebSocket message as JSON: {ex}",
-                                file=sys.stderr,
-                            )
-                            print(
-                                f"Message content (first 200 chars): {msg[:200]}",
-                                file=sys.stderr,
-                            )
-                            continue
-                # pylint: disable=broad-exception-caught  # Need to catch all to reconnect
-                except Exception as ex:
-                    print(
-                        f"ERROR: WebSocket connection error for spool updates: {ex}",
-                        file=sys.stderr,
-                    )
-                    print("Will attempt to reconnect...", file=sys.stderr)
-                    await asyncio.sleep(5)  # Wait before reconnecting
-        # pylint: disable=broad-exception-caught  # Need to catch all for proper error reporting
-        except Exception as ex:
-            print(
-                f"ERROR: Failed to connect to Spoolman WebSocket at {ws_url}",
-                file=sys.stderr,
-            )
-            print(f"Error: {ex}", file=sys.stderr)
-            print("Will retry connection in 5 seconds...", file=sys.stderr)
-            await asyncio.sleep(5)  # Wait before retrying
+        _log_debug(f"Got unknown spool update msg: {msg}")
 
 
 async def connect_updates():
-    """Connect to spoolman to get updates"""
-    await asyncio.gather(connect_filament_updates(), connect_spool_updates())
+    """Connect to Spoolman and receive updates for vendors, filaments, and spools"""
+    ws_url = "ws" + args.url[4::] + "/api/v1/"
+    while True:  # Keep trying to connect indefinitely
+        try:
+            async for connection in connect(ws_url):
+                try:
+                    async for msg in connection:
+                        try:
+                            parsed_msg = json.loads(msg)
+                            _log_debug(f"WS-msg {msg}")
+                            resource = parsed_msg.get("resource")
+
+                            if resource == "vendor":
+                                handle_vendor_update_msg(parsed_msg)
+                            elif resource == "filament":
+                                handle_filament_update_msg(parsed_msg)
+                            elif resource == "spool":
+                                handle_spool_update_msg(parsed_msg)
+                            else:
+                                _log_debug(f"Got unknown resource type: {resource}")
+                        except json.JSONDecodeError as ex:
+                            print(
+                                f"WARNING: Failed to parse WebSocket message as JSON: {ex}",
+                                file=sys.stderr,
+                            )
+                            print(
+                                f"Message content (first 200 chars): {msg[:200]}",
+                                file=sys.stderr,
+                            )
+                            continue
+                # pylint: disable=broad-exception-caught  # Need to catch all to reconnect
+                except Exception as ex:
+                    print(
+                        f"ERROR: WebSocket connection error: {ex}",
+                        file=sys.stderr,
+                    )
+                    print("Will attempt to reconnect...", file=sys.stderr)
+                    await asyncio.sleep(5)  # Wait before reconnecting
+        # pylint: disable=broad-exception-caught  # Need to catch all for proper error reporting
+        except Exception as ex:
+            _log_error(f"Failed to connect to Spoolman WebSocket at {ws_url}: {ex}")
+            print("Will retry connection in 5 seconds...", file=sys.stderr)
+            await asyncio.sleep(5)  # Wait before retrying
 
 
 def main():
@@ -675,11 +874,11 @@ def main():
     # This is necessary because websocket payloads don't contain full vendor objects
     if args.updates:
         retry_delay = 5
-        _log_info("Update mode enabled - will retry initial load until successful")
+        _log_debug("Update mode enabled - will retry initial load until successful")
         while True:
             try:
                 load_and_update_all_filaments(args.url)
-                _log_info("Initial data load successful")
+                _log_debug("Initial data load successful")
                 break  # Success, proceed to websocket connection
             except (
                 requests.exceptions.ConnectionError,
