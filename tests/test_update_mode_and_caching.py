@@ -63,17 +63,28 @@ def reset_caches():
 
 
 class TestUpdateModeResilience:
-    """Test that update mode continues even if initial API load fails"""
+    """Test that update mode retries initial API load until successful"""
 
-    def test_update_mode_continues_on_connection_error(self):
-        """Test that -U mode continues to websocket connection even if API is down"""
+    def test_update_mode_retries_on_connection_error(self):
+        """Test that -U mode retries API load on connection error until success"""
+        call_count = 0
+
+        def side_effect_func(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise requests.exceptions.ConnectionError("Connection refused")
+            # Third call succeeds
+            return None
+
         with (
             patch.object(spoolman2slicer.args, "updates", True),
             patch.object(spoolman2slicer.args, "delete_all", False),
             patch(
                 "spoolman2slicer.load_and_update_all_filaments",
-                side_effect=requests.exceptions.ConnectionError("Connection refused"),
+                side_effect=side_effect_func,
             ),
+            patch("time.sleep") as mock_sleep,
             patch("asyncio.run") as mock_asyncio_run,
         ):
             # Mock the asyncio.run to raise KeyboardInterrupt to exit cleanly
@@ -84,18 +95,32 @@ class TestUpdateModeResilience:
 
             # Should exit with code 0 (KeyboardInterrupt)
             assert exc_info.value.code == 0
-            # Verify that asyncio.run (websocket connection) was attempted
+            # Verify that load was retried before succeeding
+            assert call_count == 3
+            # Verify that sleep was called between retries
+            assert mock_sleep.call_count == 2
+            # Verify that asyncio.run (websocket connection) was attempted after success
             mock_asyncio_run.assert_called_once()
 
-    def test_update_mode_continues_on_timeout(self):
-        """Test that -U mode continues to websocket connection on timeout"""
+    def test_update_mode_retries_on_timeout(self):
+        """Test that -U mode retries API load on timeout until success"""
+        call_count = 0
+
+        def side_effect_func(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise requests.exceptions.Timeout("Request timeout")
+            return None
+
         with (
             patch.object(spoolman2slicer.args, "updates", True),
             patch.object(spoolman2slicer.args, "delete_all", False),
             patch(
                 "spoolman2slicer.load_and_update_all_filaments",
-                side_effect=requests.exceptions.Timeout("Request timeout"),
+                side_effect=side_effect_func,
             ),
+            patch("time.sleep") as mock_sleep,
             patch("asyncio.run") as mock_asyncio_run,
         ):
             mock_asyncio_run.side_effect = KeyboardInterrupt()
@@ -104,22 +129,34 @@ class TestUpdateModeResilience:
                 spoolman2slicer.main()
 
             assert exc_info.value.code == 0
+            assert call_count == 2
+            assert mock_sleep.call_count == 1
             mock_asyncio_run.assert_called_once()
 
-    def test_update_mode_continues_on_http_error(self):
-        """Test that -U mode continues to websocket connection on HTTP error"""
+    def test_update_mode_retries_on_http_error(self):
+        """Test that -U mode retries API load on HTTP error until success"""
         mock_response = Mock()
         mock_response.status_code = 500
 
+        call_count = 0
+
+        def side_effect_func(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise requests.exceptions.HTTPError(
+                    "500 Server Error", response=mock_response
+                )
+            return None
+
         with (
             patch.object(spoolman2slicer.args, "updates", True),
             patch.object(spoolman2slicer.args, "delete_all", False),
             patch(
                 "spoolman2slicer.load_and_update_all_filaments",
-                side_effect=requests.exceptions.HTTPError(
-                    "500 Server Error", response=mock_response
-                ),
+                side_effect=side_effect_func,
             ),
+            patch("time.sleep") as mock_sleep,
             patch("asyncio.run") as mock_asyncio_run,
         ):
             mock_asyncio_run.side_effect = KeyboardInterrupt()
@@ -128,17 +165,28 @@ class TestUpdateModeResilience:
                 spoolman2slicer.main()
 
             assert exc_info.value.code == 0
+            assert call_count == 2
             mock_asyncio_run.assert_called_once()
 
-    def test_update_mode_continues_on_json_error(self):
-        """Test that -U mode continues to websocket connection on JSON decode error"""
+    def test_update_mode_retries_on_json_error(self):
+        """Test that -U mode retries API load on JSON decode error until success"""
+        call_count = 0
+
+        def side_effect_func(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise json.JSONDecodeError("Invalid JSON", "", 0)
+            return None
+
         with (
             patch.object(spoolman2slicer.args, "updates", True),
             patch.object(spoolman2slicer.args, "delete_all", False),
             patch(
                 "spoolman2slicer.load_and_update_all_filaments",
-                side_effect=json.JSONDecodeError("Invalid JSON", "", 0),
+                side_effect=side_effect_func,
             ),
+            patch("time.sleep") as mock_sleep,
             patch("asyncio.run") as mock_asyncio_run,
         ):
             mock_asyncio_run.side_effect = KeyboardInterrupt()
@@ -147,6 +195,7 @@ class TestUpdateModeResilience:
                 spoolman2slicer.main()
 
             assert exc_info.value.code == 0
+            assert call_count == 2
             mock_asyncio_run.assert_called_once()
 
     def test_non_update_mode_exits_on_connection_error(self):
