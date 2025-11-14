@@ -1112,3 +1112,81 @@ class TestCreatePerSpool:
             with patch.object(spoolman2slicer.args, "create_per_spool", None):
                 filename = spoolman2slicer.get_filament_filename(sample_filament_data)
                 assert "42.ini" not in filename
+
+
+class TestAtomicWrites:
+    """Test atomic write functionality"""
+
+    def test_atomic_write_creates_file(self, temp_output_dir):
+        """Test that atomic_write creates a file successfully"""
+        test_file = os.path.join(temp_output_dir, "test_atomic.txt")
+        test_content = "Hello, atomic world!"
+
+        spoolman2slicer.atomic_write(test_file, test_content)
+
+        assert os.path.exists(test_file)
+        with open(test_file, "r", encoding="utf-8") as f:
+            assert f.read() == test_content
+
+    def test_atomic_write_replaces_existing_file(self, temp_output_dir):
+        """Test that atomic_write replaces an existing file"""
+        test_file = os.path.join(temp_output_dir, "test_replace.txt")
+
+        # Create initial file
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("Original content")
+
+        # Replace with atomic write
+        new_content = "New atomic content"
+        spoolman2slicer.atomic_write(test_file, new_content)
+
+        with open(test_file, "r", encoding="utf-8") as f:
+            assert f.read() == new_content
+
+    def test_atomic_write_no_temp_files_left(self, temp_output_dir):
+        """Test that no temporary files are left after atomic write"""
+        test_file = os.path.join(temp_output_dir, "test_cleanup.txt")
+        test_content = "Content for cleanup test"
+
+        spoolman2slicer.atomic_write(test_file, test_content)
+
+        # Check that no temporary files are left
+        files = os.listdir(temp_output_dir)
+        temp_files = [f for f in files if f.startswith(".tmp_")]
+        assert len(temp_files) == 0
+
+    def test_write_filament_uses_atomic_write(
+        self, sample_filament_data, temp_template_dir, temp_output_dir
+    ):
+        """Test that write_filament uses atomic writes"""
+        with (
+            patch.object(spoolman2slicer, "templates") as mock_templates,
+            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.args, "verbose", False),
+            patch.object(spoolman2slicer.args, "variants", ""),
+        ):
+            from jinja2 import Environment, FileSystemLoader
+
+            loader = FileSystemLoader(temp_template_dir)
+            env = Environment(loader=loader)
+            mock_templates.get_template = env.get_template
+
+            sample_filament_data["sm2s"] = {
+                "name": "spoolman2slicer.py",
+                "version": "0.0.2",
+                "slicer_suffix": "ini",
+                "variant": "",
+            }
+
+            with patch.object(
+                spoolman2slicer, "get_config_suffix", return_value=["ini"]
+            ):
+                spoolman2slicer.write_filament(sample_filament_data)
+
+            # Verify file was created
+            files = os.listdir(temp_output_dir)
+            assert len(files) == 1
+
+            # Verify no temp files left
+            temp_files = [f for f in files if f.startswith(".tmp_")]
+            assert len(temp_files) == 0
