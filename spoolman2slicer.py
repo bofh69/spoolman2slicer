@@ -664,41 +664,64 @@ def main():
     if args.delete_all:
         delete_all_filaments()
 
-    try:
-        load_and_update_all_filaments(args.url)
-    except requests.exceptions.ConnectionError:
-        # Error message already printed by load_filaments_from_spoolman
-        # In update mode, continue to websocket connection
-        if not args.updates:
+    # In update mode, keep retrying until initial load succeeds
+    # This is necessary because websocket payloads don't contain full vendor objects
+    if args.updates:
+        retry_delay = 5
+        while True:
+            try:
+                load_and_update_all_filaments(args.url)
+                break  # Success, proceed to websocket connection
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.HTTPError,
+                json.JSONDecodeError,
+            ):
+                # Error message already printed by load_filaments_from_spoolman
+                print(
+                    f"Initial load failed in update mode. "
+                    f"Retrying in {retry_delay} seconds...",
+                    file=sys.stderr,
+                )
+                time.sleep(retry_delay)
+                continue
+            # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
+            except Exception as ex:
+                print(
+                    f"ERROR: Unexpected error while loading filaments: {ex}",
+                    file=sys.stderr,
+                )
+                if args.verbose:
+                    traceback.print_exc()
+                print(
+                    f"Retrying in {retry_delay} seconds...",
+                    file=sys.stderr,
+                )
+                time.sleep(retry_delay)
+                continue
+    else:
+        # Non-update mode: fail immediately on error
+        try:
+            load_and_update_all_filaments(args.url)
+        except requests.exceptions.ConnectionError:
+            # Error message already printed by load_filaments_from_spoolman
             sys.exit(1)
-        print("Continuing to websocket connection despite initial load failure...")
-    except requests.exceptions.Timeout:
-        # Error message already printed by load_filaments_from_spoolman
-        # In update mode, continue to websocket connection
-        if not args.updates:
+        except requests.exceptions.Timeout:
+            # Error message already printed by load_filaments_from_spoolman
             sys.exit(1)
-        print("Continuing to websocket connection despite initial load failure...")
-    except requests.exceptions.HTTPError:
-        # Error message already printed by load_filaments_from_spoolman
-        # In update mode, continue to websocket connection
-        if not args.updates:
+        except requests.exceptions.HTTPError:
+            # Error message already printed by load_filaments_from_spoolman
             sys.exit(1)
-        print("Continuing to websocket connection despite initial load failure...")
-    except json.JSONDecodeError:
-        # Error message already printed by load_filaments_from_spoolman
-        # In update mode, continue to websocket connection
-        if not args.updates:
+        except json.JSONDecodeError:
+            # Error message already printed by load_filaments_from_spoolman
             sys.exit(1)
-        print("Continuing to websocket connection despite initial load failure...")
-    # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
-    except Exception as ex:
-        print(f"ERROR: Unexpected error while loading filaments: {ex}", file=sys.stderr)
-        if args.verbose:
-            traceback.print_exc()
-        # In update mode, continue to websocket connection
-        if not args.updates:
+        # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
+        except Exception as ex:
+            print(f"ERROR: Unexpected error while loading filaments: {ex}", file=sys.stderr)
+            if args.verbose:
+                traceback.print_exc()
             sys.exit(1)
-        print("Continuing to websocket connection despite initial load failure...")
 
     if args.updates:
         print("Waiting for updates...")
