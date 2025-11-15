@@ -15,7 +15,7 @@ import os
 import time
 import traceback
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import requests
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
@@ -40,7 +40,7 @@ SUPERSLICER = "superslicer"
 
 
 @dataclass
-class SpoolmanConfig:
+class SpoolmanConfig:  # pylint: disable=too-many-instance-attributes
     """Configuration for spoolman2slicer operations"""
 
     output_dir: str
@@ -65,7 +65,7 @@ class SpoolmanConfig:
             raise ValueError(f"Invalid create_per_spool mode: {self.create_per_spool}")
 
 
-class SpoolmanProcessor:
+class SpoolmanProcessor:  # pylint: disable=too-many-public-methods,too-many-instance-attributes
     """
     Processes Spoolman data and generates slicer configuration files.
     Can be used from CLI or GUI applications.
@@ -459,6 +459,7 @@ class SpoolmanProcessor:
         else:
             self.process_filaments_default(spools)
 
+    # pylint: disable=too-many-branches  # Complex spool update logic requires multiple branches
     def handle_spool_update(self, spool: Dict):
         """Update files for a spool based on current mode"""
         if "filament" not in spool:
@@ -584,6 +585,7 @@ class SpoolmanProcessor:
         else:
             self._log_info(f"Got unknown filament update msg: {msg}")
 
+    # pylint: disable=too-many-branches  # Complex message handling requires multiple branches
     def handle_spool_update_msg(self, msg: Dict):
         """Handles spool update msgs received via WS"""
         spool = msg["payload"]
