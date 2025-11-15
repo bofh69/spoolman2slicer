@@ -21,51 +21,12 @@ configuration files for:
 
 The filament configuration files are created from templates.
 
-## Programmatic API for GUI Integration
-
-**New!** spoolman2slicer now provides a clean programmatic API that can be easily integrated into GUI applications. The core business logic has been separated from CLI concerns, making it easy to use from any Python application.
-
-### Quick Example
-
-```python
-from spoolman_core import SpoolmanConfig, SpoolmanProcessor
-
-# Configure
-config = SpoolmanConfig(
-    output_dir="/path/to/slicer/filament/config",
-    slicer="superslicer",
-    spoolman_url="http://localhost:7912",
-    template_path="/path/to/templates",
-)
-
-# Process
-processor = SpoolmanProcessor(config, logger=my_custom_logger)
-processor.run_once()  # Or processor.run_with_updates()
-```
-
-### Documentation
-
-- **[API_USAGE.md](API_USAGE.md)** - Complete API documentation
-- **[example_usage.py](example_usage.py)** - Usage examples for various scenarios
-- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** - Detailed refactoring information
-
-### Key Benefits
-
-- ✅ No CLI dependencies
-- ✅ Configuration via dataclasses
-- ✅ Custom logging support
-- ✅ Thread-safe operations
-- ✅ 100% backward compatible with CLI
-
-The original command-line interface remains unchanged and fully functional.
-
 ## Table of Contents
 
 <!--TOC-->
 
 - [Spoolman to slicer config generator](#spoolman-to-slicer-config-generator)
   - [Intro](#intro)
-  - [Programmatic API for GUI Integration](#programmatic-api-for-gui-integration)
   - [The workflow](#the-workflow)
     - [Files from filaments](#files-from-filaments)
     - [Files from spools](#files-from-spools)
