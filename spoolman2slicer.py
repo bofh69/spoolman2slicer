@@ -344,10 +344,12 @@ def get_filename_cache_key(filament):
     Generate cache key for filament filename.
 
     Uses spool ID when in "all" mode, otherwise uses filament ID.
+    Includes variant in the key to support per-variant filenames.
     """
+    variant = filament.get("sm2s", {}).get("variant", "")
     if args.create_per_spool == "all" and filament.get("spool", {}).get("id"):
-        return f"spool-{filament['spool']['id']}-{filament['sm2s']['slicer_suffix']}"
-    return f"{filament['id']}-{filament['sm2s']['slicer_suffix']}"
+        return f"spool-{filament['spool']['id']}-{filament['sm2s']['slicer_suffix']}-{variant}"
+    return f"{filament['id']}-{filament['sm2s']['slicer_suffix']}-{variant}"
 
 
 def get_content_cache_key(filament):
@@ -355,10 +357,12 @@ def get_content_cache_key(filament):
     Generate cache key for filament content.
 
     Uses spool ID when in "all" mode, otherwise uses filament ID.
+    Includes variant in the key to support per-variant content.
     """
+    variant = filament.get("sm2s", {}).get("variant", "")
     if args.create_per_spool == "all" and filament.get("spool", {}).get("id"):
-        return f"spool-{filament['spool']['id']}"
-    return str(filament["id"])
+        return f"spool-{filament['spool']['id']}-{variant}"
+    return f"{filament['id']}-{variant}"
 
 
 def get_cached_filename_from_filaments_id(filament):

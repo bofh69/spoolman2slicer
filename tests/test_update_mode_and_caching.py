@@ -246,12 +246,12 @@ class TestCachingForSpoolAll:
             # Write filament
             spoolman2slicer.write_filament(sample_filament_data)
 
-            # Check that cache key uses spool ID
-            expected_cache_key = "spool-42-ini"
+            # Check that cache key uses spool ID and includes variant
+            expected_cache_key = "spool-42-ini-"
             assert expected_cache_key in spoolman2slicer.filament_id_to_filename
 
-            # Content cache should also use spool ID
-            expected_content_key = "spool-42"
+            # Content cache should also use spool ID and variant
+            expected_content_key = "spool-42-"
             assert expected_content_key in spoolman2slicer.filament_id_to_content
 
     def test_cache_uses_filament_id_without_all_mode(
@@ -282,12 +282,12 @@ class TestCachingForSpoolAll:
             # Write filament
             spoolman2slicer.write_filament(sample_filament_data)
 
-            # Check that cache key uses filament ID
-            expected_cache_key = f"{sample_filament_data['id']}-ini"
+            # Check that cache key uses filament ID and includes variant
+            expected_cache_key = f"{sample_filament_data['id']}-ini-"
             assert expected_cache_key in spoolman2slicer.filament_id_to_filename
 
-            # Content cache should also use filament ID
-            expected_content_key = str(sample_filament_data["id"])
+            # Content cache should also use filament ID and variant
+            expected_content_key = f"{sample_filament_data['id']}-"
             assert expected_content_key in spoolman2slicer.filament_id_to_content
 
     def test_multiple_spools_same_filament_separate_cache(
@@ -329,11 +329,11 @@ class TestCachingForSpoolAll:
             spoolman2slicer.write_filament(filament1)
             spoolman2slicer.write_filament(filament2)
 
-            # Check that both spools have separate cache entries
-            assert "spool-1-ini" in spoolman2slicer.filament_id_to_filename
-            assert "spool-2-ini" in spoolman2slicer.filament_id_to_filename
-            assert "spool-1" in spoolman2slicer.filament_id_to_content
-            assert "spool-2" in spoolman2slicer.filament_id_to_content
+            # Check that both spools have separate cache entries including variant
+            assert "spool-1-ini-" in spoolman2slicer.filament_id_to_filename
+            assert "spool-2-ini-" in spoolman2slicer.filament_id_to_filename
+            assert "spool-1-" in spoolman2slicer.filament_id_to_content
+            assert "spool-2-" in spoolman2slicer.filament_id_to_content
 
             # Check that two files were created
             files = os.listdir(temp_output_dir)
@@ -388,3 +388,64 @@ class TestCachingForSpoolAll:
             spoolman2slicer.write_filament(filament1)
             captured = capsys.readouterr()
             assert "Same content, file not updated" in captured.out
+
+    def test_cache_includes_variant_in_key(
+        self, sample_filament_data, temp_template_dir, temp_output_dir
+    ):
+        """Test that cache keys include variant to support multiple variants"""
+        with (
+            patch.object(spoolman2slicer, "templates") as mock_templates,
+            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.args, "verbose", False),
+            patch.object(spoolman2slicer.args, "create_per_spool", None),
+        ):
+            from jinja2 import Environment, FileSystemLoader
+
+            loader = FileSystemLoader(temp_template_dir)
+            env = Environment(loader=loader)
+            mock_templates.get_template = env.get_template
+
+            # Write same filament with different variants
+            filament1 = sample_filament_data.copy()
+            filament1["sm2s"] = {
+                "name": "spoolman2slicer.py",
+                "version": "0.0.2",
+                "slicer_suffix": "ini",
+                "variant": "printer1",
+            }
+            filament1["spool"] = {}
+
+            filament2 = sample_filament_data.copy()
+            filament2["sm2s"] = {
+                "name": "spoolman2slicer.py",
+                "version": "0.0.2",
+                "slicer_suffix": "ini",
+                "variant": "printer2",
+            }
+            filament2["spool"] = {}
+
+            # Write both variants
+            spoolman2slicer.write_filament(filament1)
+            spoolman2slicer.write_filament(filament2)
+
+            # Check that both variants have separate cache entries
+            assert (
+                f"{sample_filament_data['id']}-ini-printer1"
+                in spoolman2slicer.filament_id_to_filename
+            )
+            assert (
+                f"{sample_filament_data['id']}-ini-printer2"
+                in spoolman2slicer.filament_id_to_filename
+            )
+            assert (
+                f"{sample_filament_data['id']}-printer1"
+                in spoolman2slicer.filament_id_to_content
+            )
+            assert (
+                f"{sample_filament_data['id']}-printer2"
+                in spoolman2slicer.filament_id_to_content
+            )
+
+            # Check that two files were created (one per variant)
+            files = os.listdir(temp_output_dir)
+            assert len(files) == 2
