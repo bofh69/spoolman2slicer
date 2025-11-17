@@ -84,26 +84,26 @@ class TestConfigSuffix:
 class TestLoadFilaments:
     """Test loading filaments from Spoolman"""
 
-    def test_load_filaments_success(self, sample_spoolman_response):
+    def test_load_objects_success(self, sample_spoolman_response):
         """Test successful loading of filaments"""
         mock_response = Mock()
         mock_response.text = json.dumps(sample_spoolman_response)
 
         with patch("requests.get", return_value=mock_response):
-            result = spoolman2slicer.load_filaments_from_spoolman(
+            result = spoolman2slicer.load_objects_from_spoolman(
                 "http://test.local:7912"
             )
             assert len(result) == 2
             assert result[0]["id"] == 1
             assert result[0]["filament"]["material"] == "PLA"
 
-    def test_load_filaments_connection_error(self):
+    def test_load_objects_connection_error(self):
         """Test handling of connection errors"""
         with patch("requests.get", side_effect=requests.exceptions.ConnectionError):
             with pytest.raises(requests.exceptions.ConnectionError):
-                spoolman2slicer.load_filaments_from_spoolman("http://test.local:7912")
+                spoolman2slicer.load_objects_from_spoolman("http://test.local:7912")
 
-    def test_load_filaments_with_retry_on_connection_error(self):
+    def test_load_objects_with_retry_on_connection_error(self):
         """Test that connection errors are retried with exponential backoff"""
         with (
             patch(
@@ -113,7 +113,7 @@ class TestLoadFilaments:
             patch("time.sleep") as mock_sleep,
         ):
             with pytest.raises(requests.exceptions.ConnectionError):
-                spoolman2slicer.load_filaments_from_spoolman(
+                spoolman2slicer.load_objects_from_spoolman(
                     "http://test.local:7912", max_retries=3
                 )
 
@@ -125,7 +125,7 @@ class TestLoadFilaments:
             mock_sleep.assert_any_call(1)
             mock_sleep.assert_any_call(2)
 
-    def test_load_filaments_timeout_with_retry(self):
+    def test_load_objects_timeout_with_retry(self):
         """Test that timeout errors are retried"""
         with (
             patch(
@@ -135,14 +135,14 @@ class TestLoadFilaments:
             patch("time.sleep") as mock_sleep,
         ):
             with pytest.raises(requests.exceptions.Timeout):
-                spoolman2slicer.load_filaments_from_spoolman(
+                spoolman2slicer.load_objects_from_spoolman(
                     "http://test.local:7912", max_retries=3
                 )
 
             # Should have tried 3 times
             assert mock_sleep.call_count == 2
 
-    def test_load_filaments_http_error(self):
+    def test_load_objects_http_error(self):
         """Test handling of HTTP errors (no retry)"""
         mock_response = Mock()
         mock_response.status_code = 404
@@ -152,9 +152,9 @@ class TestLoadFilaments:
 
         with patch("requests.get", return_value=mock_response):
             with pytest.raises(requests.exceptions.HTTPError):
-                spoolman2slicer.load_filaments_from_spoolman("http://test.local:7912")
+                spoolman2slicer.load_objects_from_spoolman("http://test.local:7912")
 
-    def test_load_filaments_malformed_json(self, capsys):
+    def test_load_objects_malformed_json(self, capsys):
         """Test handling of malformed JSON responses"""
         mock_response = Mock()
         mock_response.text = "This is not valid JSON {{{["
@@ -162,13 +162,13 @@ class TestLoadFilaments:
 
         with patch("requests.get", return_value=mock_response):
             with pytest.raises(json.JSONDecodeError):
-                spoolman2slicer.load_filaments_from_spoolman("http://test.local:7912")
+                spoolman2slicer.load_objects_from_spoolman("http://test.local:7912")
 
             # Check that error message was printed
             captured = capsys.readouterr()
             assert "ERROR: Failed to parse JSON response" in captured.err
 
-    def test_load_filaments_success_after_retry(self, sample_spoolman_response):
+    def test_load_objects_success_after_retry(self, sample_spoolman_response):
         """Test successful load after initial failure"""
         mock_response = Mock()
         mock_response.text = json.dumps(sample_spoolman_response)
@@ -186,7 +186,7 @@ class TestLoadFilaments:
             ),
             patch("time.sleep"),
         ):
-            result = spoolman2slicer.load_filaments_from_spoolman(
+            result = spoolman2slicer.load_objects_from_spoolman(
                 "http://test.local:7912", max_retries=3
             )
             assert len(result) == 2

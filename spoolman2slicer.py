@@ -234,7 +234,7 @@ def _log_debug(message: str):
 
 
 # pylint: disable=too-many-branches  # Complex error handling requires multiple branches
-def load_filaments_from_spoolman(url: str, max_retries: int = 3):
+def load_objects_from_spoolman(url: str, max_retries: int = 3):
     """
     Load filaments json data from Spoolman with retry logic.
 
@@ -552,12 +552,12 @@ def load_and_cache_data(url: str):
     global vendors_cache, filaments_cache, spools_cache
 
     _log_debug("Loading vendors from Spoolman")
-    vendors_list = load_filaments_from_spoolman(url + "/api/v1/vendor")
+    vendors_list = load_objects_from_spoolman(url + "/api/v1/vendor")
     vendors_cache = {vendor["id"]: vendor for vendor in vendors_list}
     _log_info(f"Loaded {len(vendors_cache)} vendors")
 
     _log_debug("Loading filaments from Spoolman")
-    filaments_list = load_filaments_from_spoolman(url + "/api/v1/filament")
+    filaments_list = load_objects_from_spoolman(url + "/api/v1/filament")
     # Build filament dicts with vendor references
     for filament in filaments_list:
         # If the filament API returns nested vendor object, use it
@@ -570,7 +570,7 @@ def load_and_cache_data(url: str):
     _log_info(f"Loaded {len(filaments_cache)} filaments")
 
     _log_debug("Loading spools from Spoolman")
-    spools_list = load_filaments_from_spoolman(url + "/api/v1/spool")
+    spools_list = load_objects_from_spoolman(url + "/api/v1/spool")
     # Build spool dicts with filament references (which include vendor)
     for spool in spools_list:
         # If the spool API returns nested filament object, use it but ensure vendor is set
@@ -891,7 +891,7 @@ def main():
                 requests.exceptions.HTTPError,
                 json.JSONDecodeError,
             ) as ex:
-                # Error details already logged by load_filaments_from_spoolman
+                # Error details already logged by load_objects_from_spoolman
                 print(
                     f"Initial load failed in update mode: {type(ex).__name__}",
                     file=sys.stderr,
@@ -923,7 +923,7 @@ def main():
             requests.exceptions.HTTPError,
             json.JSONDecodeError,
         ) as ex:
-            # Error details already logged by load_filaments_from_spoolman
+            # Error details already logged by load_objects_from_spoolman
             _log_error(f"Failed to load filaments: {type(ex).__name__}")
             sys.exit(1)
         # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
