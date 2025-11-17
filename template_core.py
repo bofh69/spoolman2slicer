@@ -88,7 +88,9 @@ class TemplateProcessor:
     def create_template_path(self):
         """Creates the dir for the template config for the slicer"""
         if not os.path.exists(self.config.template_path):
-            self._log_info(f"Creating templates config dir: {self.config.template_path}")
+            self._log_info(
+                f"Creating templates config dir: {self.config.template_path}"
+            )
             os.makedirs(self.config.template_path)
 
     def copy_filament_template_files(self, script_dir: str):
@@ -166,7 +168,9 @@ class TemplateProcessor:
                 "filament_vendor": ["{{vendor.name}}"],
                 "name": "{% if spool.id %}{{name}} - {{spool.id}}{% else %}{{name}}{% endif %}",
                 "nozzle_temperature": ["{{settings_extruder_temp|int}}"],
-                "nozzle_temperature_initial_layer": ["{{settings_extruder_temp|int + 5}}"],
+                "nozzle_temperature_initial_layer": [
+                    "{{settings_extruder_temp|int + 5}}"
+                ],
                 "cool_plate_temp": ["{{settings_bed_temp|int}}"],
                 "eng_plate_temp": ["{{settings_bed_temp|int}}"],
                 "hot_plate_temp": ["{{settings_bed_temp|int}}"],
@@ -223,7 +227,8 @@ class TemplateProcessor:
             config = self.load_config_file(self.config.slicer, full_path)
             material = self.get_material(config, self.config.slicer)
             template_file_name = (
-                f"{self.config.template_path}/{material}{suffix}{DEFAULT_TEMPLATE_SUFFIX}"
+                f"{self.config.template_path}/"
+                + "{material}{suffix}{DEFAULT_TEMPLATE_SUFFIX}"
             )
 
             if os.path.exists(template_file_name):
@@ -238,8 +243,10 @@ class TemplateProcessor:
                 info_filename = full_path.replace(suffix, ".info")
                 config = self.load_config_file(SUPERSLICER, info_filename)
                 template_file_name = (
-                    f"{self.config.template_path}/{material}.info{DEFAULT_TEMPLATE_SUFFIX}"
+                    f"{self.config.template_path}/"
+                    + "{material}.info{DEFAULT_TEMPLATE_SUFFIX}"
                 )
+
                 self._log_info(f"Creating file: {template_file_name}")
                 config["updated_time"] = "{{sm2s.now_int}}"
                 self.store_config(SUPERSLICER, template_file_name, config)

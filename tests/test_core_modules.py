@@ -73,7 +73,7 @@ class TestSpoolmanCore:
         )
         processor = SpoolmanProcessor(config, logger=custom_logger)
         processor._log_info("Test message")
-        
+
         assert len(logged_messages) == 1
         assert logged_messages[0][0] == "INFO"
         assert "Test message" in logged_messages[0][1]
@@ -206,11 +206,15 @@ class TestIntegration:
         # Create template directory
         template_dir = tmp_path / "templates"
         template_dir.mkdir()
-        
+
         # Create minimal templates
-        (template_dir / "filename.template").write_text("{{vendor.name}} - {{name}}.ini\n")
-        (template_dir / "default.ini.template").write_text("filament_type = {{material}}\n")
-        
+        (template_dir / "filename.template").write_text(
+            "{{vendor.name}} - {{name}}.ini\n"
+        )
+        (template_dir / "default.ini.template").write_text(
+            "filament_type = {{material}}\n"
+        )
+
         # Create output directory
         output_dir = tmp_path / "output"
         output_dir.mkdir()

@@ -51,7 +51,9 @@ class SpoolmanConfig:  # pylint: disable=too-many-instance-attributes
     updates: bool = False
     variants: str = ""
     delete_all: bool = False
-    create_per_spool: Optional[str] = None  # None, "all", "least-left", or "most-recent"
+    create_per_spool: Optional[str] = (
+        None  # None, "all", "least-left", or "most-recent"
+    )
 
     def __post_init__(self):
         """Validate configuration"""
@@ -204,9 +206,7 @@ class SpoolmanProcessor:  # pylint: disable=too-many-public-methods,too-many-ins
                         f"Request to {url} timed out after {REQUEST_TIMEOUT_SECONDS}s"
                     )
                 else:
-                    self._log_debug(
-                        f"Timeout (attempt {attempt + 1}/{max_retries})"
-                    )
+                    self._log_debug(f"Timeout (attempt {attempt + 1}/{max_retries})")
                     wait_time = 2**attempt
                     self._log_info(f"Waiting {wait_time} seconds before retry...")
                     time.sleep(wait_time)
@@ -221,7 +221,9 @@ class SpoolmanProcessor:  # pylint: disable=too-many-public-methods,too-many-ins
         if last_exception:
             raise last_exception
 
-        raise RuntimeError(f"Failed to load data from {url} after {max_retries} attempts")
+        raise RuntimeError(
+            f"Failed to load data from {url} after {max_retries} attempts"
+        )
 
     def get_filament_filename(self, filament: Dict) -> str:
         """Returns the filament's config filename"""
@@ -239,18 +241,18 @@ class SpoolmanProcessor:  # pylint: disable=too-many-public-methods,too-many-ins
 
     def get_filename_cache_key(self, filament: Dict) -> str:
         """Generate cache key for filament filename"""
-        if (
-            self.config.create_per_spool == "all"
-            and filament.get("spool", {}).get("id")
+        if self.config.create_per_spool == "all" and filament.get("spool", {}).get(
+            "id"
         ):
-            return f"spool-{filament['spool']['id']}-{filament['sm2s']['slicer_suffix']}"
+            return (
+                f"spool-{filament['spool']['id']}-{filament['sm2s']['slicer_suffix']}"
+            )
         return f"{filament['id']}-{filament['sm2s']['slicer_suffix']}"
 
     def get_content_cache_key(self, filament: Dict) -> str:
         """Generate cache key for filament content"""
-        if (
-            self.config.create_per_spool == "all"
-            and filament.get("spool", {}).get("id")
+        if self.config.create_per_spool == "all" and filament.get("spool", {}).get(
+            "id"
         ):
             return f"spool-{filament['spool']['id']}"
         return str(filament["id"])
@@ -627,7 +629,9 @@ class SpoolmanProcessor:  # pylint: disable=too-many-public-methods,too-many-ins
                     old_filament_copy = old_filament.copy()
                     for suffix in self.get_config_suffix():
                         for variant in self.config.variants.split(","):
-                            self.add_sm2s_to_filament(old_filament_copy, suffix, variant)
+                            self.add_sm2s_to_filament(
+                                old_filament_copy, suffix, variant
+                            )
                             self.delete_filament(old_filament_copy)
 
             self.handle_spool_update(spool)
@@ -704,7 +708,9 @@ class SpoolmanProcessor:  # pylint: disable=too-many-public-methods,too-many-ins
 
         # Keep retrying initial load until successful
         retry_delay = 5
-        self._log_debug("Update mode enabled - will retry initial load until successful")
+        self._log_debug(
+            "Update mode enabled - will retry initial load until successful"
+        )
         while True:
             try:
                 self.load_and_update_all_filaments()
