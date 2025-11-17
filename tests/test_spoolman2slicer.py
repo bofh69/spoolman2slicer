@@ -1190,3 +1190,236 @@ class TestAtomicWrites:
             # Verify no temp files left
             temp_files = [f for f in files if f.startswith(".tmp_")]
             assert len(temp_files) == 0
+
+
+class TestVendorNameChange:
+    """Test that vendor name changes update config filenames correctly"""
+
+    def test_vendor_name_change_default_mode(self, temp_output_dir, temp_template_dir):
+        """Test that vendor name change updates filename in default mode"""
+        # Setup test data with complete filament fields
+        vendor = {"id": 1, "name": "OldVendor", "extra": {}}
+        vendor_updated = {"id": 1, "name": "NewVendor", "extra": {}}
+
+        filament = {
+            "id": 10,
+            "name": "Test PLA",
+            "material": "PLA",
+            "vendor": vendor.copy(),
+            "settings_extruder_temp": 210,
+            "settings_bed_temp": 60,
+            "density": 1.24,
+            "diameter": 1.75,
+            "weight": 1000.0,
+            "spool_weight": 200.0,
+            "color_hex": "000000",
+            "extra": {},
+        }
+
+        spool = {"id": 100, "filament": filament.copy(), "archived": False}
+
+        # Populate caches
+        spoolman2slicer.vendors_cache[1] = vendor
+        spoolman2slicer.filaments_cache[10] = filament
+        spoolman2slicer.spools_cache[100] = spool
+
+        with (
+            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.args, "verbose", False),
+            patch.object(spoolman2slicer.args, "variants", ""),
+            patch.object(spoolman2slicer.args, "create_per_spool", None),
+            patch.object(spoolman2slicer, "get_config_suffix", return_value=["ini"]),
+        ):
+            from jinja2 import Environment, FileSystemLoader
+
+            loader = FileSystemLoader(temp_template_dir)
+            env = Environment(loader=loader)
+
+            with patch.object(spoolman2slicer, "templates") as mock_templates:
+                mock_templates.get_template = env.get_template
+
+                # Write initial file with old vendor name
+                filament_copy = filament.copy()
+                spoolman2slicer.add_sm2s_to_filament(filament_copy, "ini", "")
+                spoolman2slicer.write_filament(filament_copy)
+
+                # Check old file was created
+                old_filename = f"{temp_output_dir}/OldVendor - Test PLA.ini"
+                assert os.path.exists(
+                    old_filename
+                ), f"Old file not found: {old_filename}"
+
+                # Now simulate vendor name change
+                msg = {"type": "updated", "payload": vendor_updated}
+                spoolman2slicer.handle_vendor_update_msg(msg)
+
+                # Check new file was created
+                new_filename = f"{temp_output_dir}/NewVendor - Test PLA.ini"
+                assert os.path.exists(
+                    new_filename
+                ), f"New file not found: {new_filename}"
+
+                # Check old file was deleted
+                assert not os.path.exists(
+                    old_filename
+                ), f"Old file still exists: {old_filename}"
+
+    def test_vendor_name_change_per_spool_all_mode(
+        self, temp_output_dir, temp_template_dir
+    ):
+        """Test that vendor name change updates filename in per-spool all mode"""
+        # Setup test data with complete filament fields
+        vendor = {"id": 1, "name": "OldVendor", "extra": {}}
+        vendor_updated = {"id": 1, "name": "NewVendor", "extra": {}}
+
+        filament = {
+            "id": 10,
+            "name": "Test PLA",
+            "material": "PLA",
+            "vendor": vendor.copy(),
+            "settings_extruder_temp": 210,
+            "settings_bed_temp": 60,
+            "density": 1.24,
+            "diameter": 1.75,
+            "weight": 1000.0,
+            "spool_weight": 200.0,
+            "color_hex": "000000",
+            "extra": {},
+        }
+
+        spool = {"id": 100, "filament": filament.copy(), "archived": False}
+
+        # Populate caches
+        spoolman2slicer.vendors_cache[1] = vendor
+        spoolman2slicer.filaments_cache[10] = filament
+        spoolman2slicer.spools_cache[100] = spool
+
+        with (
+            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.args, "verbose", False),
+            patch.object(spoolman2slicer.args, "variants", ""),
+            patch.object(spoolman2slicer.args, "create_per_spool", "all"),
+            patch.object(spoolman2slicer, "get_config_suffix", return_value=["ini"]),
+        ):
+            from jinja2 import Environment, FileSystemLoader
+
+            loader = FileSystemLoader(temp_template_dir)
+            env = Environment(loader=loader)
+
+            with patch.object(spoolman2slicer, "templates") as mock_templates:
+                mock_templates.get_template = env.get_template
+
+                # Write initial file with old vendor name
+                filament_copy = filament.copy()
+                spoolman2slicer.add_sm2s_to_filament(filament_copy, "ini", "", spool)
+                spoolman2slicer.write_filament(filament_copy)
+
+                # Check old file was created
+                old_filename = f"{temp_output_dir}/OldVendor - Test PLA - 100.ini"
+                assert os.path.exists(
+                    old_filename
+                ), f"Old file not found: {old_filename}"
+
+                # Now simulate vendor name change
+                msg = {"type": "updated", "payload": vendor_updated}
+                spoolman2slicer.handle_vendor_update_msg(msg)
+
+                # Check new file was created
+                new_filename = f"{temp_output_dir}/NewVendor - Test PLA - 100.ini"
+                assert os.path.exists(
+                    new_filename
+                ), f"New file not found: {new_filename}"
+
+                # Check old file was deleted
+                assert not os.path.exists(
+                    old_filename
+                ), f"Old file still exists: {old_filename}"
+
+    def test_vendor_name_change_multiple_filaments(
+        self, temp_output_dir, temp_template_dir
+    ):
+        """Test that vendor name change updates all filaments from that vendor"""
+        # Setup test data with complete filament fields
+        vendor = {"id": 1, "name": "OldVendor", "extra": {}}
+        vendor_updated = {"id": 1, "name": "NewVendor", "extra": {}}
+
+        filament1 = {
+            "id": 10,
+            "name": "Test PLA",
+            "material": "PLA",
+            "vendor": vendor.copy(),
+            "settings_extruder_temp": 210,
+            "settings_bed_temp": 60,
+            "density": 1.24,
+            "diameter": 1.75,
+            "weight": 1000.0,
+            "spool_weight": 200.0,
+            "color_hex": "000000",
+            "extra": {},
+        }
+
+        filament2 = {
+            "id": 11,
+            "name": "Test ABS",
+            "material": "ABS",
+            "vendor": vendor.copy(),
+            "settings_extruder_temp": 240,
+            "settings_bed_temp": 100,
+            "density": 1.04,
+            "diameter": 1.75,
+            "weight": 1000.0,
+            "spool_weight": 250.0,
+            "color_hex": "FF0000",
+            "extra": {},
+        }
+
+        spool1 = {"id": 100, "filament": filament1.copy(), "archived": False}
+        spool2 = {"id": 101, "filament": filament2.copy(), "archived": False}
+
+        # Populate caches
+        spoolman2slicer.vendors_cache[1] = vendor
+        spoolman2slicer.filaments_cache[10] = filament1
+        spoolman2slicer.filaments_cache[11] = filament2
+        spoolman2slicer.spools_cache[100] = spool1
+        spoolman2slicer.spools_cache[101] = spool2
+
+        with (
+            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.args, "verbose", False),
+            patch.object(spoolman2slicer.args, "variants", ""),
+            patch.object(spoolman2slicer.args, "create_per_spool", None),
+            patch.object(spoolman2slicer, "get_config_suffix", return_value=["ini"]),
+        ):
+            from jinja2 import Environment, FileSystemLoader
+
+            loader = FileSystemLoader(temp_template_dir)
+            env = Environment(loader=loader)
+
+            with patch.object(spoolman2slicer, "templates") as mock_templates:
+                mock_templates.get_template = env.get_template
+
+                # Write initial files with old vendor name
+                for filament in [filament1, filament2]:
+                    filament_copy = filament.copy()
+                    spoolman2slicer.add_sm2s_to_filament(filament_copy, "ini", "")
+                    spoolman2slicer.write_filament(filament_copy)
+
+                # Check old files were created
+                old_filename1 = f"{temp_output_dir}/OldVendor - Test PLA.ini"
+                old_filename2 = f"{temp_output_dir}/OldVendor - Test ABS.ini"
+                assert os.path.exists(old_filename1)
+                assert os.path.exists(old_filename2)
+
+                # Now simulate vendor name change
+                msg = {"type": "updated", "payload": vendor_updated}
+                spoolman2slicer.handle_vendor_update_msg(msg)
+
+                # Check new files were created
+                new_filename1 = f"{temp_output_dir}/NewVendor - Test PLA.ini"
+                new_filename2 = f"{temp_output_dir}/NewVendor - Test ABS.ini"
+                assert os.path.exists(new_filename1)
+                assert os.path.exists(new_filename2)
+
+                # Check old files were deleted
+                assert not os.path.exists(old_filename1)
+                assert not os.path.exists(old_filename2)
