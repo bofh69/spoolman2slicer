@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-FROM python:3.9.25-slim-trixie
+FROM python:3.10-slim
 
 COPY [".", "."]
 ENV PYTHONUNBUFFERED=1

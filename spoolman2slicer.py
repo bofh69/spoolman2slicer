@@ -4,11 +4,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # /// script
-# requires-python = ">=3.9"
+# requires-python = ">=3.10"
 # dependencies = [
 #   "appdirs==1.4.4",
 #   "Jinja2==3.1.6",
-#   "requests==2.32.4",
+#   "requests==2.32.5",
+#   "urllib3>=2.6.0",
 #   "websockets==12.0",
 # ]
 # ///
