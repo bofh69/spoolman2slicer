@@ -11,7 +11,7 @@ name = "spoolman2slicer"
 dynamic = ["version"]
 description = "Export active Spoolman spools' data to filament configuration files for 3D printer slicers"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
 authors = [
     {name = "Sebastian Andersson", email = "sebastian@bittr.nu"}
