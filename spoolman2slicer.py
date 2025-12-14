@@ -494,7 +494,8 @@ def process_filaments_default(spools):
             filament = filaments_cache[filament_id].copy()
             filament["spool_id"] = spool["id"]
             year = int(str(time.strftime("%Y"))[-2:])
-            filament["spool_id_extended"]  = str(year) + str(spool["id"]).rjust(3, "0")
+            if args.slicer == CREALITYPRINT:
+                filament["crealityprint_id"] = str(year) + str(spool["id"]).rjust(3, "0")
             for suffix in get_config_suffix():
                 for variant in args.variants.split(","):
                     add_sm2s_to_filament(filament, suffix, variant)
