@@ -10,13 +10,13 @@
         "1"
     ],
     "additional_cooling_fan_speed": [
-        "80"
+        "0"
     ],
     "chamber_temperature": [
         "35"
     ],
     "close_fan_the_first_x_layers": [
-        "3"
+        "1"
     ],
     "compatible_printers": [
         "Creality K2 Plus 0.4 nozzle"
@@ -31,13 +31,13 @@
         "0.5"
     ],
     "cool_plate_temp": [
-        "50"
+        "70"
     ],
     "cool_plate_temp_initial_layer": [
-        "50"
+        "70"
     ],
     "cool_special_cds_fan_speed": [
-        "100"
+        "0"
     ],
     "customized_plate_temp": [
         "35"
@@ -70,25 +70,25 @@
         "0"
     ],
     "eng_plate_temp": [
-        "50"
+        "0"
     ],
     "eng_plate_temp_initial_layer": [
-        "50"
+        "0"
     ],
     "epoxy_resin_plate_temp": [
-        "40"
+        "60"
     ],
     "epoxy_resin_plate_temp_initial_layer": [
-        "40"
+        "60"
     ],
     "fan_cooling_layer_time": [
-        "100"
+        "30"
     ],
     "fan_max_speed": [
-        "100"
+        "80"
     ],
     "fan_min_speed": [
-        "100"
+        "40"
     ],
     "filament_cooling_final_speed": [
         "3.4"
@@ -140,7 +140,7 @@
         "nil"
     ],
     "filament_max_volumetric_speed": [
-        "14"
+        "16"
     ],
     "filament_minimal_purge_on_wipe_tower": [
         "15"
@@ -161,7 +161,7 @@
         "120 100 6.6 6.8 7.2 7.6 7.9 8.2 8.7 9.4 9.9 10.0| 0.05 6.6 0.45 6.8 0.95 7.8 1.45 8.3 1.95 9.7 2.45 10 2.95 7.6 3.45 7.6 3.95 7.6 4.45 7.6 4.95 7.6"
     ],
     "filament_retract_before_wipe": [
-        "100%"
+        "nil"
     ],
     "filament_retract_lift_above": [
         "nil"
@@ -182,7 +182,7 @@
         "nil"
     ],
     "filament_retraction_length": [
-        "1.2"
+        "nil"
     ],
     "filament_retraction_minimum_travel": [
         "nil"
@@ -249,10 +249,10 @@
         "0"
     ],
     "hot_plate_temp": [
-        "50"
+        "70"
     ],
     "hot_plate_temp_initial_layer": [
-        "50"
+        "70"
     ],
     "idle_temperature": [
         "0"
@@ -271,16 +271,16 @@
         "{{settings_extruder_temp|int}}"
     ],
     "nozzle_temperature_range_high": [
-        "240"
+        "270"
     ],
     "nozzle_temperature_range_low": [
-        "190"
+        "220"
     ],
     "overhang_fan_speed": [
-        "100"
+        "90"
     ],
     "overhang_fan_threshold": [
-        "50%"
+        "25%"
     ],
     "pellet_flow_coefficient": [
         "0.4157"
@@ -291,7 +291,7 @@
     ],
 {% else %}
     "pressure_advance": [
-        "0.04"
+        "0.1"
     ],
 {% endif %}
     "reduce_fan_stop_start_freq": [
@@ -304,10 +304,10 @@
         "1"
     ],
     "slow_down_layer_time": [
-        "6"
+        "8"
     ],
     "slow_down_min_speed": [
-        "20"
+        "10"
     ],
     "smart_cooling_zones": [
         "0"
@@ -316,7 +316,7 @@
         "-1"
     ],
     "temperature_vitrification": [
-        "110"
+        "80"
     ],
     "textured_plate_temp": [
         "{{settings_bed_temp|int}}"
