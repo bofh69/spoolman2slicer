@@ -27,6 +27,8 @@ import platform
 import sys
 import time
 import traceback
+import shutil
+import glob
 
 from appdirs import user_config_dir
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
@@ -122,6 +124,17 @@ args = parser.parse_args()
 
 config_dir = user_config_dir(appname="spoolman2slicer", appauthor=False, roaming=True)
 template_path = os.path.join(config_dir, f"templates-{args.slicer}")
+script_dir = os.path.dirname(__file__)
+destination_path = config_dir
+
+# Find all matching directories or files using glob
+templates = glob.glob(os.path.join(script_dir, 'templates-*'))
+
+# Copy each matching directory to the destination
+for template in templates:
+    dest = os.path.join(destination_path, os.path.basename(template))
+    shutil.copytree(template, dest, dirs_exist_ok=True)
+    print(f"Copied {template} to {dest}")
 
 if args.verbose:
     print(f"Reading templates files from: {template_path}")
@@ -479,6 +492,9 @@ def process_filaments_default(spools):
     for filament_id in filament_ids_with_spools:
         if filament_id in filaments_cache:
             filament = filaments_cache[filament_id].copy()
+            filament["spool_id"] = spool["id"]
+            year = int(str(time.strftime("%Y"))[-2:])
+            filament["spool_id_extended"]  = str(year) + str(spool["id"]).rjust(3, "0")
             for suffix in get_config_suffix():
                 for variant in args.variants.split(","):
                     add_sm2s_to_filament(filament, suffix, variant)
