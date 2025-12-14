@@ -1,5 +1,5 @@
-sync_info = create
+sync_info = 
 user_id = 
 setting_id = 
-base_id = GFSA04
-updated_time = {{sm2s.now_int}}
+base_id = 
+updated_time = 0
