@@ -57,15 +57,9 @@
     "enable_overhang_bridge_fan": [
         "1"
     ],
-{% if extra.enable_pressure_advance == 'true' %}
     "enable_pressure_advance": [
-	    "1"
+	    "{% if extra.enable_pressure_advance == 'true' %}1{% else %}0{% endif %}"
     ],
-{% else %}
-    "enable_pressure_advance": [
-	    "0"
-    ],
-{% endif %}
     "enable_special_area_additional_cooling_fan": [
         "0"
     ],
@@ -114,16 +108,10 @@
     "filament_end_gcode": [
         ";filament end gcode "
     ],
-{% if extra.enable_flow_ratio == 'true' %}
     "filament_flow_ratio": [
-        "{{extra.flow_ratio|default(1)|float}}"
+        "{% if extra.enable_flow_ratio == 'true' %}{{extra.flow_ratio|default(1)|float}}{% else %}0.95{% endif %}"
     ],
-{% else %}
-    "filament_flow_ratio": [
-        "0.95"
-    ],
-{% endif %}
-    "filament_id": "{{id}}",
+    "filament_id": "P{{crealityprint_id}}",
     "filament_is_support": [
         "0"
     ],
@@ -155,7 +143,7 @@
         "10"
     ],
     "filament_notes": [
-        "{\"id\":\"{{spool.crealityprint_id}}\",\"vendor\":\"{{vendor.name}}\",\"type\":\"{{extra.slicer_material | replace('\"','')}}\",\"name\":\"{{name}}\"}"
+        "{\"id\":\"{{crealityprint_id}}\",\"vendor\":\"{{vendor.name}}\",\"type\":\"{{extra.slicer_material | replace('\"','')}}\",\"name\":\"{{name}}\"}"
     ],
     "filament_ramming_parameters": [
         "120 100 6.6 6.8 7.2 7.6 7.9 8.2 8.7 9.4 9.9 10.0| 0.05 6.6 0.45 6.8 0.95 7.8 1.45 8.3 1.95 9.7 2.45 10 2.95 7.6 3.45 7.6 3.95 7.6 4.45 7.6 4.95 7.6"
@@ -191,7 +179,7 @@
         "nil"
     ],
     "filament_settings_id": [
-        "{{id}}"
+        "{{name}}"
     ],
     "filament_shrink": [
         "100%"
@@ -263,7 +251,7 @@
         "0"
     ],
     "material_flow_temp_graph": "[[3.0,210],[10.0,220],[12.0,230]]",
-    "name": "{{name}}{% if spool_id %} - {{spool_id}}{% endif %}",
+    "name": "{{name}}",
     "nozzle_temperature": [
         "{{settings_extruder_temp|int}}"
     ],
@@ -285,15 +273,9 @@
     "pellet_flow_coefficient": [
         "0.4157"
     ],
-{% if extra.enable_pressure_advance == 'true' %}
     "pressure_advance": [
-        "{{extra.pressure_advance|default(0)|float}}"
+        "{% if extra.enable_pressure_advance == 'true' %}{{extra.pressure_advance|default(0)|float}}{% else %}0.04{% endif %}"
     ],
-{% else %}
-    "pressure_advance": [
-        "0.04"
-    ],
-{% endif %}
     "reduce_fan_stop_start_freq": [
         "1"
     ],
