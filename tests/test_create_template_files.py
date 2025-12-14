@@ -36,6 +36,14 @@ class TestGetMaterial:
         )
         assert material == "PLA"
 
+    def test_get_material_crealityprint(self):
+        """Test extracting material from CrealityPrint config"""
+        config = {"filament_type": "PLA"}
+        material = create_template_files.get_material(
+            config, create_template_files.CREALITYPRINT
+        )
+        assert material == "PLA"
+
     def test_get_material_superslicer(self):
         """Test extracting material from SuperSlicer config"""
         config = {"filament_type": "ABS"}
@@ -119,6 +127,23 @@ class TestLoadConfigFile:
         assert config["name"] == "Test Filament"
         assert config["filament_type"] == ["PLA"]
 
+    def test_load_crealityprint_json(self, tmp_path):
+        """Test loading CrealityPrint JSON config"""
+        json_file = tmp_path / "test.json"
+        test_data = {
+            "name": "Test Filament",
+            "filament_type": ["PLA"],
+            "nozzle_temperature": ["210"],
+        }
+        json_file.write_text(json.dumps(test_data))
+
+        config = create_template_files.load_config_file(
+            create_template_files.CREALITYPRINT, str(json_file)
+        )
+
+        assert config["name"] == "Test Filament"
+        assert config["filament_type"] == ["PLA"]
+
     def test_load_superslicer_ini(self, tmp_path):
         """Test loading SuperSlicer INI config"""
         ini_file = tmp_path / "test.ini"
@@ -146,6 +171,24 @@ class TestStoreConfig:
 
         create_template_files.store_config(
             create_template_files.ORCASLICER, str(template_file), config
+        )
+
+        assert template_file.exists()
+        stored_data = json.loads(template_file.read_text())
+        assert "_comment" in stored_data
+        assert stored_data["name"] == "{{name}}"
+
+    def test_store_crealityprint_config(self, tmp_path):
+        """Test storing CrealityPrint JSON template"""
+        template_file = tmp_path / "PLA.json.template"
+        config = {
+            "name": "{{name}}",
+            "filament_type": ["{{material}}"],
+            "nozzle_temperature": ["{{settings_extruder_temp|int}}"],
+        }
+
+        create_template_files.store_config(
+            create_template_files.CREALITYPRINT, str(template_file), config
         )
 
         assert template_file.exists()
@@ -198,6 +241,26 @@ class TestUpdateConfigSettings:
         }
 
         args = type("Args", (), {"slicer": create_template_files.ORCASLICER})()
+        updated = create_template_files.update_config_settings(args, config)
+
+        assert (
+            updated["name"]
+            == "{% if spool.id %}{{name}} - {{spool.id}}{% else %}{{name}}{% endif %}"
+        )
+        assert updated["filament_type"] == ["{{material}}"]
+        assert updated["filament_cost"] == ["{{price}}"]
+        assert updated["nozzle_temperature"] == ["{{settings_extruder_temp|int}}"]
+
+    def test_update_crealityprint_settings(self):
+        """Test updating CrealityPrint config settings"""
+        config = {
+            "name": "Original Name",
+            "filament_type": ["PLA"],
+            "filament_cost": ["25.0"],
+            "nozzle_temperature": ["210"],
+        }
+
+        args = type("Args", (), {"slicer": create_template_files.CREALITYPRINT})()
         updated = create_template_files.update_config_settings(args, config)
 
         assert (
@@ -456,6 +519,31 @@ class TestAtomicWrites:
 
         create_template_files.store_config(
             create_template_files.ORCASLICER, str(template_file), config
+        )
+
+        # Verify file was created
+        assert template_file.exists()
+
+        # Verify content is valid JSON
+        content = template_file.read_text()
+        parsed = json.loads(content)
+        assert "_comment" in parsed
+        assert "filament_type" in parsed
+
+        # Verify no temp files left
+        temp_files = [f for f in tmp_path.iterdir() if f.name.startswith(".tmp_")]
+        assert len(temp_files) == 0
+
+    def test_store_config_uses_atomic_write_crealityprint(self, tmp_path):
+        """Test that store_config uses atomic writes for CrealityPrint"""
+        template_file = tmp_path / "test.json.template"
+        config = {
+            "filament_type": ["PLA"],
+            "nozzle_temperature": [200],
+        }
+
+        create_template_files.store_config(
+            create_template_files.CREALITYPRINT, str(template_file), config
         )
 
         # Verify file was created

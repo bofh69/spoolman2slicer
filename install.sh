@@ -9,7 +9,7 @@
 #   Interactive Bash script to install and configure spoolman2slicer.
 #   - Installs or updates spoolman2slicer and its Python dependencies.
 #   - Copies slicer templates to user config directory (~/.config/spoolman2slicer).
-#   - Generates filament configuration files for OrcaSlicer, PrusaSlicer, or SuperSlicer.
+#   - Generates filament configuration files for OrcaSlicer, CrealityPrint, PrusaSlicer, or SuperSlicer.
 #   - Stores user preferences for slicer, output folder, and Spoolman URL.
 #
 # Usage:
@@ -89,7 +89,7 @@ function install_spoolman2slicer() {
     pip install -r requirements.txt
     deactivate
 
-    for slicer in orcaslicer prusaslicer superslicer; do
+    for slicer in orcaslicer crealityprint prusaslicer superslicer; do
         mkdir -p "$CONFIG_DIR/templates-$slicer"
         cp -r "$SP_DIR/templates-$slicer/"* "$CONFIG_DIR/templates-$slicer/" 2>/dev/null || true
     done
@@ -106,15 +106,17 @@ function choose_slicer() {
     while true; do
         echo -e "${BLUE}Select your slicer (default: ${last_slicer:-OrcaSlicer}):${NC}"
         echo "1 - OrcaSlicer"
-        echo "2 - PrusaSlicer"
-        echo "3 - SuperSlicer"
+        echo "2 - CrealityPrint"
+        echo "3 - PrusaSlicer"
+        echo "4 - SuperSlicer"
         echo "b - Back"
-        read -rp "Enter option [1-3 or b]: " slicer_option
+        read -rp "Enter option [1-4 or b]: " slicer_option
 
         case ${slicer_option:-1} in
             1) SLICER="orcaslicer"; break ;;
-            2) SLICER="prusaslicer"; break ;;
-            3) SLICER="superslicer"; break ;;
+            2) SLICER="crealityprint"; break ;;
+            3) SLICER="prusaslicer"; break ;;
+            4) SLICER="superslicer"; break ;;
             b|B) return 1 ;;
             *) echo -e "${RED}Invalid slicer selected. Please try again.${NC}" ;;
         esac

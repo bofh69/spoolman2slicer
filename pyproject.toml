@@ -16,7 +16,7 @@ license = "GPL-3.0-or-later"
 authors = [
     {name = "Sebastian Andersson", email = "sebastian@bittr.nu"}
 ]
-keywords = ["spoolman", "3d-printing", "slicer", "orcaslicer", "prusaslicer", "superslicer"]
+keywords = ["spoolman", "3d-printing", "slicer", "orcaslicer", "crealityprint", "prusaslicer", "superslicer"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
@@ -54,6 +54,7 @@ version = {attr = "spoolman2slicer.VERSION"}
 
 [tool.setuptools.data-files]
 "share/spoolman2slicer/templates-orcaslicer" = ["templates-orcaslicer/*"]
+"share/spoolman2slicer/templates-crealityprint" = ["templates-crealityprint/*"]
 "share/spoolman2slicer/templates-prusaslicer" = ["templates-prusaslicer/*"]
 "share/spoolman2slicer/templates-superslicer" = ["templates-superslicer/*"]
 

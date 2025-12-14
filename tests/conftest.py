@@ -146,7 +146,7 @@ def temp_template_dir():
             "bed_temperature = {{settings_bed_temp|int}}\n"
         )
 
-        # Create default.json.template for OrcaSlicer
+        # Create default.json.template for OrcaSlicer and CrealityPrint
         default_json = Path(tmpdir) / "default.json.template"
         default_json.write_text(
             json.dumps(
@@ -167,7 +167,7 @@ def temp_template_dir():
             )
         )
 
-        # Create default.info.template for OrcaSlicer
+        # Create default.info.template for OrcaSlicer and CrealityPrint
         default_info = Path(tmpdir) / "default.info.template"
         default_info.write_text("updated_time = {{sm2s.now_int}}\n")
 
