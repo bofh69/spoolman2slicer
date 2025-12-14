@@ -6,5 +6,6 @@ include README.md
 include LICENSE
 include requirements.txt
 recursive-include templates-orcaslicer *
+recursive-include templates-crealityprint *
 recursive-include templates-prusaslicer *
 recursive-include templates-superslicer *

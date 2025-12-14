@@ -46,6 +46,7 @@ FILENAME_FOR_SPOOL_TEMPLATE = "filename_for_spool.template"
 REQUEST_TIMEOUT_SECONDS = 10
 
 ORCASLICER = "orcaslicer"
+CREALITYPRINT = "crealityprint"
 PRUSASLICER = "prusaslicer"
 SLICER = "slic3r"
 SUPERSLICER = "superslicer"
@@ -67,7 +68,7 @@ parser.add_argument(
     "-s",
     "--slicer",
     default=SUPERSLICER,
-    choices=[ORCASLICER, PRUSASLICER, SLICER, SUPERSLICER],
+    choices=[ORCASLICER, CREALITYPRINT, PRUSASLICER, SLICER, SUPERSLICER],
     help="the slicer",
 )
 
@@ -194,7 +195,7 @@ def get_config_suffix():
     """Returns the slicer's config file prefix"""
     if args.slicer in (SLICER, SUPERSLICER, PRUSASLICER):
         return ["ini"]
-    if args.slicer == ORCASLICER:
+    if args.slicer in (ORCASLICER, CREALITYPRINT):
         return ["json", "info"]
 
     raise ValueError("That slicer is not yet supported")

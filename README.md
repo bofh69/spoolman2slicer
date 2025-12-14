@@ -15,6 +15,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 configuration files for:
 
 * [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer)
+* [CrealityPrint](https://github.com/CrealityOfficial/CrealityPrint)
 * [PrusaSlicer](https://www.prusa3d.com/page/prusaslicer_424/)
 * [Slic3r](https://slic3r.org/)
 * [SuperSlicer](https://github.com/supermerill/SuperSlicer)
@@ -114,7 +115,7 @@ If you update the filename template, update the name field too.
 
 ```text
 usage: spoolman2slicer.py [-h] [--version] -d DIR
-                          [-s {orcaslicer,prusaslicer,slic3r,superslicer}]
+                          [-s {orcaslicer,crealityprint,prusaslicer,slic3r,superslicer}]
                           [-u URL] [-U] [-v] [-V VALUE1,VALUE2..] [-D]
                           [--create-per-spool {all,least-left,most-recent}]
 
@@ -124,7 +125,7 @@ options:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
   -d DIR, --dir DIR     the slicer's filament config dir
-  -s {orcaslicer,prusaslicer,slic3r,superslicer}, --slicer {orcaslicer,prusaslicer,slic3r,superslicer}
+  -s {orcaslicer,crealityprint,prusaslicer,slic3r,superslicer}, --slicer {orcaslicer,crealityprint,prusaslicer,slic3r,superslicer}
                         the slicer
   -u URL, --url URL     URL for the Spoolman installation
   -U, --updates         keep running and update filament configs if they're
@@ -377,6 +378,11 @@ When installed from pip, remove use `spoolman2slicer` instead of `./spoolman2sli
 ### Ubuntu & OrcaSlicer
 ```sh
 ./spoolman2slicer.py -s orcaslicer -U -d ~/.config/OrcaSlicer/user/default/filament/
+```
+
+### Ubuntu & CrealityPrint
+```sh
+./spoolman2slicer.py -s crealityprint -U -d ~/.config/Creality/CrealityPrint/user/default/filament/
 ```
 
 ### Ubuntu & PrusaSlicer

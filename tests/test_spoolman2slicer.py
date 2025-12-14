@@ -80,6 +80,11 @@ class TestConfigSuffix:
             result = spoolman2slicer.get_config_suffix()
             assert result == ["json", "info"]
 
+    def test_crealityprint_suffix(self):
+        """Test CrealityPrint returns json and info suffixes"""
+        with patch.object(spoolman2slicer.args, "slicer", spoolman2slicer.CREALITYPRINT):
+            result = spoolman2slicer.get_config_suffix()
+            assert result == ["json", "info"]
 
 class TestLoadFilaments:
     """Test loading filaments from Spoolman"""
@@ -492,6 +497,40 @@ class TestSlicerTypes:
                 assert data["name"] == "Test PLA Black"
                 assert data["filament_type"] == ["PLA"]
 
+    def test_crealityprint_json_generation(
+        self, sample_filament_data, temp_template_dir, temp_output_dir
+    ):
+        """Test CrealityPrint JSON file generation"""
+        with (
+            patch.object(spoolman2slicer, "templates") as mock_templates,
+            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.args, "verbose", False),
+            patch.object(spoolman2slicer.args, "slicer", spoolman2slicer.CREALITYPRINT),
+        ):
+            from jinja2 import Environment, FileSystemLoader
+
+            loader = FileSystemLoader(temp_template_dir)
+            env = Environment(loader=loader)
+            mock_templates.get_template = env.get_template
+
+            sample_filament_data["sm2s"] = {
+                "name": "spoolman2slicer.py",
+                "version": "0.0.2",
+                "slicer_suffix": "json",
+                "variant": "",
+                "now_int": 1234567890,
+            }
+
+            spoolman2slicer.write_filament(sample_filament_data)
+
+            files = [f for f in os.listdir(temp_output_dir) if f.endswith(".json")]
+            assert len(files) == 1
+
+            # Verify JSON is valid
+            with open(os.path.join(temp_output_dir, files[0]), "r") as f:
+                data = json.load(f)
+                assert data["name"] == "Test PLA Black"
+                assert data["filament_type"] == ["PLA"]
 
 class TestAddSm2sToFilament:
     """Test adding sm2s metadata to filament"""
