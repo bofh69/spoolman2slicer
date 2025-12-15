@@ -3,7 +3,7 @@
         "0"
     ],
     "activate_chamber_temp_control": [
-        "0"
+        "1"
     ],
     "additional_cooling_fan_speed": [
         "0"
@@ -66,10 +66,10 @@
         "{{settings_bed_temp|int}}"
     ],
     "epoxy_resin_plate_temp": [
-        "0"
+        "60"
     ],
     "epoxy_resin_plate_temp_initial_layer": [
-        "0"
+        "60"
     ],
     "fan_cooling_layer_time": [
         "30"
