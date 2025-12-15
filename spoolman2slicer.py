@@ -492,10 +492,10 @@ def process_filaments_default(spools):
     for filament_id in filament_ids_with_spools:
         if filament_id in filaments_cache:
             filament = filaments_cache[filament_id].copy()
-            filament["spool_id"] = spool["id"]
             year = int(str(time.strftime("%Y"))[-2:])
             if args.slicer == CREALITYPRINT:
-                filament["crealityprint_id"] = str(year) + str(spool["id"]).rjust(3, "0")
+                filament["spool_id"] = filament_id
+                filament["material_code"] = str(year) + str(spool["id"]).rjust(3, "0")
             for suffix in get_config_suffix():
                 for variant in args.variants.split(","):
                     add_sm2s_to_filament(filament, suffix, variant)
@@ -504,11 +504,15 @@ def process_filaments_default(spools):
 
 def process_filaments_per_spool_all(spools):
     """Process filaments in 'all' mode: one file per non-archived spool"""
+    year = int(str(time.strftime("%Y"))[-2:])
     for spool in spools:
         # Skip archived spools
         if spool.get("archived", False):
             continue
         filament = spool["filament"].copy()  # Make a copy to avoid mutation
+        if args.slicer == CREALITYPRINT:
+            filament["spool_id"] = spool["id"]
+            filament["material_code"] = str(year) + str(spool["id"]).rjust(3, "0")
         for suffix in get_config_suffix():
             for variant in args.variants.split(","):
                 add_sm2s_to_filament(filament, suffix, variant, spool)
