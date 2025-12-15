@@ -3,7 +3,7 @@
         "0"
     ],
     "activate_chamber_temp_control": [
-        "0"
+        "1"
     ],
     "additional_cooling_fan_speed": [
         "80"
@@ -66,10 +66,10 @@
         "{{settings_bed_temp|int}}"
     ],
     "epoxy_resin_plate_temp": [
-        "0"
+        "40"
     ],
     "epoxy_resin_plate_temp_initial_layer": [
-        "0"
+        "40"
     ],
     "fan_cooling_layer_time": [
         "100"
@@ -124,7 +124,7 @@
         "nil"
     ],
     "filament_max_volumetric_speed": [
-        "{{extra.max_volumetric_speed|default(20)|float}}"
+        "{{extra.max_volumetric_speed|default(14)|float}}"
     ],
     "filament_minimal_purge_on_wipe_tower": [
         "15"

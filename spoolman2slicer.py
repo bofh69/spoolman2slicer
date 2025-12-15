@@ -492,10 +492,9 @@ def process_filaments_default(spools):
     for filament_id in filament_ids_with_spools:
         if filament_id in filaments_cache:
             filament = filaments_cache[filament_id].copy()
-            year = int(str(time.strftime("%Y"))[-2:])
             if args.slicer == CREALITYPRINT:
                 filament["spool_id"] = filament_id
-                filament["material_code"] = str(year) + str(spool["id"]).rjust(3, "0")
+                filament["material_code"] = material_code_year_prefix + str(spool["id"]).rjust(3, "0")
             for suffix in get_config_suffix():
                 for variant in args.variants.split(","):
                     add_sm2s_to_filament(filament, suffix, variant)
@@ -504,7 +503,6 @@ def process_filaments_default(spools):
 
 def process_filaments_per_spool_all(spools):
     """Process filaments in 'all' mode: one file per non-archived spool"""
-    year = int(str(time.strftime("%Y"))[-2:])
     for spool in spools:
         # Skip archived spools
         if spool.get("archived", False):
@@ -512,7 +510,7 @@ def process_filaments_per_spool_all(spools):
         filament = spool["filament"].copy()  # Make a copy to avoid mutation
         if args.slicer == CREALITYPRINT:
             filament["spool_id"] = spool["id"]
-            filament["material_code"] = str(year) + str(spool["id"]).rjust(3, "0")
+            filament["material_code"] = material_code_year_prefix + str(spool["id"]).rjust(3, "0")
         for suffix in get_config_suffix():
             for variant in args.variants.split(","):
                 add_sm2s_to_filament(filament, suffix, variant, spool)
@@ -897,6 +895,10 @@ def main():
     """Main function to run the spoolman2slicer tool"""
     if args.delete_all:
         delete_all_filaments()
+
+    # pylint: disable=global-variable-not-assigned
+    global material_code_year_prefix
+    material_code_year_prefix = str(str(time.strftime("%Y"))[-2:])
 
     # In update mode, keep retrying until initial load succeeds
     # This is necessary because websocket payloads don't contain full vendor objects
