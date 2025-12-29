@@ -562,8 +562,9 @@ def process_filaments_per_spool_selected(spools, selector_func):
 def load_and_cache_data(url: str):
     """Load vendors, filaments, and spools from Spoolman and cache them"""
     # pylint: disable=global-variable-not-assigned
-    global vendors_cache, filaments_cache, spools_cache
+    global vendors_cache, filaments_cache, spools_cache, material_code_year_prefix
 
+    material_code_year_prefix = str(str(time.strftime("%Y"))[-2:])
     _log_debug("Loading vendors from Spoolman")
     vendors_list = load_filaments_from_spoolman(url + "/api/v1/vendor")
     vendors_cache = {vendor["id"]: vendor for vendor in vendors_list}
@@ -607,10 +608,6 @@ def load_and_cache_data(url: str):
 def load_and_update_all_filaments(url: str):
     """Load the filaments from Spoolman and store them in the files"""
     load_and_cache_data(url)
-
-    # pylint: disable=global-variable-not-assigned
-    global material_code_year_prefix
-    material_code_year_prefix = str(str(time.strftime("%Y"))[-2:])
 
     # Convert spools_cache to list for processing
     spools = list(spools_cache.values())
