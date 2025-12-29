@@ -27,8 +27,6 @@ import platform
 import sys
 import time
 import traceback
-import shutil
-import glob
 
 from appdirs import user_config_dir
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
@@ -124,17 +122,6 @@ args = parser.parse_args()
 
 config_dir = user_config_dir(appname="spoolman2slicer", appauthor=False, roaming=True)
 template_path = os.path.join(config_dir, f"templates-{args.slicer}")
-script_dir = os.path.dirname(__file__)
-destination_path = config_dir
-
-# Find all matching directories or files using glob
-templates = glob.glob(os.path.join(script_dir, 'templates-*'))
-
-# Copy each matching directory to the destination
-for template in templates:
-    dest = os.path.join(destination_path, os.path.basename(template))
-    shutil.copytree(template, dest, dirs_exist_ok=True)
-    print(f"Copied {template} to {dest}")
 
 if args.verbose:
     print(f"Reading templates files from: {template_path}")
