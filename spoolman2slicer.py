@@ -173,6 +173,7 @@ filename_usage = {}
 vendors_cache = {}  # id -> vendor dict
 filaments_cache = {}  # id -> filament dict
 spools_cache = {}  # id -> spool dict
+material_code_year_prefix = "" # year string
 
 
 def add_sm2s_to_filament(filament, suffix, variant, spool=None):
