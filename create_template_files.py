@@ -50,7 +50,7 @@ OS_LINUX = "Linux"
 
 FILAMENT_CONFIG_DIRS = {
     f"{OS_LINUX}-{ORCASLICER}": "~/.config/OrcaSlicer/user/default/filament",
-    f"{OS_LINUX}-{CREALITYPRINT}": "~/.config/Creality/CrealityPrint/user/default/filament",
+    f"{OS_LINUX}-{CREALITYPRINT}": "~/.config/Creality/Creality Print/6.0/user/default/filament",
     f"{OS_LINUX}-{PRUSASLICER}": "~/.var/app/com.prusa3d.PrusaSlicer/config/PrusaSlicer/filament",
     f"{OS_LINUX}-{SUPERSLICER}": "~/.config/SuperSlicer/filament",
     f"{OS_LINUX}-{SLICER}": "~/.Slic3r/filament",
@@ -275,6 +275,9 @@ def main():
     template_path = os.path.join(config_dir, f"templates-{args.slicer}")
     filament_path = get_filament_path(args)
 
+    if args.slicer in (ORCASLICER, CREALITYPRINT):
+        print('ERROR: Orca Slicer and Creality Print is not supported at the moment.')
+        sys.exit(1)
     if args.verbose:
         print(f"Writing templates files to: {template_path}")
 
