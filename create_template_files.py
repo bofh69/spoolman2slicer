@@ -276,7 +276,7 @@ def main():
     filament_path = get_filament_path(args)
 
     if args.slicer in (ORCASLICER, CREALITYPRINT):
-        print('ERROR: Orca Slicer and Creality Print is not supported at the moment.')
+        print('ERROR: OrcaSlicer and Creality Print is not supported at the moment.')
         sys.exit(1)
     if args.verbose:
         print(f"Writing templates files to: {template_path}")
