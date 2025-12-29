@@ -483,7 +483,7 @@ def process_filaments_default(spools):
             if args.slicer == CREALITYPRINT:
                 filament["spool_id"] = filament_id
                 filament["material_code"] = (
-                    material_code_year_prefix + str(spool["id"]).rjust(3, "0")
+                    material_code_year_prefix + str(filament_id).rjust(3, "0")
                 )
             for suffix in get_config_suffix():
                 for variant in args.variants.split(","):
