@@ -494,7 +494,9 @@ def process_filaments_default(spools):
             filament = filaments_cache[filament_id].copy()
             if args.slicer == CREALITYPRINT:
                 filament["spool_id"] = filament_id
-                filament["material_code"] = material_code_year_prefix + str(spool["id"]).rjust(3, "0")
+                filament["material_code"] = (
+                    material_code_year_prefix + str(spool["id"]).rjust(3, "0")
+                )
             for suffix in get_config_suffix():
                 for variant in args.variants.split(","):
                     add_sm2s_to_filament(filament, suffix, variant)
@@ -510,7 +512,9 @@ def process_filaments_per_spool_all(spools):
         filament = spool["filament"].copy()  # Make a copy to avoid mutation
         if args.slicer == CREALITYPRINT:
             filament["spool_id"] = spool["id"]
-            filament["material_code"] = material_code_year_prefix + str(spool["id"]).rjust(3, "0")
+            filament["material_code"] = (
+                material_code_year_prefix + str(spool["id"]).rjust(3, "0")
+            )
         for suffix in get_config_suffix():
             for variant in args.variants.split(","):
                 add_sm2s_to_filament(filament, suffix, variant, spool)
