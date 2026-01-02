@@ -82,9 +82,12 @@ class TestConfigSuffix:
 
     def test_crealityprint_suffix(self):
         """Test CrealityPrint returns json and info suffixes"""
-        with patch.object(spoolman2slicer.args, "slicer", spoolman2slicer.CREALITYPRINT):
+        with patch.object(
+            spoolman2slicer.args, "slicer", spoolman2slicer.CREALITYPRINT
+        ):
             result = spoolman2slicer.get_config_suffix()
             assert result == ["json", "info"]
+
 
 class TestLoadFilaments:
     """Test loading filaments from Spoolman"""
@@ -531,6 +534,7 @@ class TestSlicerTypes:
                 data = json.load(f)
                 assert data["name"] == "Test PLA Black"
                 assert data["filament_type"] == ["PLA"]
+
 
 class TestAddSm2sToFilament:
     """Test adding sm2s metadata to filament"""

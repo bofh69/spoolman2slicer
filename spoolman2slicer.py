@@ -45,6 +45,7 @@ FILENAME_FOR_SPOOL_TEMPLATE = "filename_for_spool.template"
 
 REQUEST_TIMEOUT_SECONDS = 10
 
+# pylint: disable=duplicate-code
 ORCASLICER = "orcaslicer"
 CREALITYPRINT = "crealityprint"
 PRUSASLICER = "prusaslicer"
@@ -173,7 +174,7 @@ filename_usage = {}
 vendors_cache = {}  # id -> vendor dict
 filaments_cache = {}  # id -> filament dict
 spools_cache = {}  # id -> spool dict
-material_code_year_prefix = "" # year string
+material_code_year_prefix = ""  # pylint: disable=invalid-name
 
 
 def add_sm2s_to_filament(filament, suffix, variant, spool=None):
@@ -482,9 +483,9 @@ def process_filaments_default(spools):
             filament = filaments_cache[filament_id].copy()
             if args.slicer == CREALITYPRINT:
                 filament["spool_id"] = filament_id
-                filament["material_code"] = (
-                    material_code_year_prefix + str(filament_id).rjust(3, "0")
-                )
+                filament["material_code"] = material_code_year_prefix + str(
+                    filament_id
+                ).rjust(3, "0")
             for suffix in get_config_suffix():
                 for variant in args.variants.split(","):
                     add_sm2s_to_filament(filament, suffix, variant)
@@ -500,9 +501,9 @@ def process_filaments_per_spool_all(spools):
         filament = spool["filament"].copy()  # Make a copy to avoid mutation
         if args.slicer == CREALITYPRINT:
             filament["spool_id"] = spool["id"]
-            filament["material_code"] = (
-                material_code_year_prefix + str(spool["id"]).rjust(3, "0")
-            )
+            filament["material_code"] = material_code_year_prefix + str(
+                spool["id"]
+            ).rjust(3, "0")
         for suffix in get_config_suffix():
             for variant in args.variants.split(","):
                 add_sm2s_to_filament(filament, suffix, variant, spool)
