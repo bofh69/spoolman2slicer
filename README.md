@@ -190,7 +190,7 @@ If you want to run from source, clone the repository and run:
 ```sh
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Configuring the filament config templates

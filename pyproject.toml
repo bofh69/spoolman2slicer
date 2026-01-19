@@ -13,6 +13,11 @@ description = "Export active Spoolman spools' data to filament configuration fil
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
+license-files = [
+  "LICENSE",
+  "LICENSES/*",
+  "REUSE.toml",
+]
 authors = [
     {name = "Sebastian Andersson", email = "sebastian@bittr.nu"}
 ]
@@ -32,8 +37,24 @@ classifiers = [
 dependencies = [
     "appdirs==1.4.4",
     "Jinja2==3.1.6",
-    "requests==2.32.4",
+    "requests==2.32.5",
     "websockets==12.0",
+    "urllib3>=2.6.0",
+]
+[project.optional-dependencies]
+dev = [
+    "black>=25.9.0",
+    "build>=1.4.0",
+    "bumpver>=2025.1131",
+    "mypy>=1.0.0",
+    "pylint>=4.0.0",
+    "pytest>=8.0.0",
+    "pytest-mock>=3.12.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "reuse>=5.0.0",
+    "ruff>=0.1.0",
+    "types-pyserial>=3.5.0",
 ]
 
 [project.urls]
@@ -53,9 +74,10 @@ py-modules = ["spoolman2slicer", "create_template_files", "file_utils"]
 version = {attr = "spoolman2slicer.VERSION"}
 
 [tool.setuptools.data-files]
-"share/spoolman2slicer/templates-orcaslicer" = ["templates-orcaslicer/*"]
 "share/spoolman2slicer/templates-crealityprint" = ["templates-crealityprint/*"]
+"share/spoolman2slicer/templates-orcaslicer" = ["templates-orcaslicer/*"]
 "share/spoolman2slicer/templates-prusaslicer" = ["templates-prusaslicer/*"]
+"share/spoolman2slicer/templates-slic3r" = ["templates-slic3r/*"]
 "share/spoolman2slicer/templates-superslicer" = ["templates-superslicer/*"]
 
 [tool.pytest.ini_options]

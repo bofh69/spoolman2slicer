@@ -23,19 +23,18 @@ help:
 	@echo test-cov - run tests with coverage report.
 	@echo clean - remove venv directory.
 
-$(VENV_TIMESTAMP): requirements-dev.txt requirements.txt
+$(VENV_TIMESTAMP): pyproject.toml
 	@echo Building $(VENV)
 	python3 -m venv $(VENV)
-	$(PIP) install -r requirements-dev.txt -r requirements.txt
+	$(PIP) install -e .
+	$(PIP) install .[dev]
 	touch $@
 
 $(BLACK): $(VENV_TIMESTAMP)
 $(PYLINT): $(VENV_TIMESTAMP)
 $(REUSE): $(VENV_TIMESTAMP)
 $(PYTEST): $(VENV_TIMESTAMP)
-
 $(PYTEST): $(VENV_TIMESTAMP)
-	$(PIP) install -r requirements-dev.txt
 
 fmt: $(BLACK)
 	$(BLACK) $(SRC) $(SRC_TEST)
