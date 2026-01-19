@@ -12,7 +12,7 @@ PYLINT:=$(VENV)/bin/pylint
 REUSE:=$(VENV)/bin/reuse
 PYTEST:=$(VENV)/bin/pytest
 
-SRC=$(wildcard *.py)
+SRC=$(wildcard spoolman2slicer/*.py)
 SRC_TEST=$(wildcard tests/*.py)
 
 help:

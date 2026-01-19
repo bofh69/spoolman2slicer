@@ -63,7 +63,7 @@ function check_for_updates() {
             echo -e "${BLUE}Updates available. Updating spoolman2slicer...${NC}"
             git pull
             source venv/bin/activate
-            pip install -r requirements.txt --upgrade
+            pip install . --upgrade
             deactivate
             echo -e "${GREEN}spoolman2slicer updated successfully.${NC}"
         else
@@ -86,13 +86,11 @@ function install_spoolman2slicer() {
 
     source "$SP_DIR/venv/bin/activate"
     echo -e "${BLUE}Installing dependencies...${NC}"
-    pip install -r requirements.txt
+    pip install .
     deactivate
 
-    for slicer in orcaslicer crealityprint prusaslicer superslicer; do
-        mkdir -p "$CONFIG_DIR/templates-$slicer"
-        cp -r "$SP_DIR/templates-$slicer/"* "$CONFIG_DIR/templates-$slicer/" 2>/dev/null || true
-    done
+    mkdir -p "$CONFIG_DIR/"
+    cp -r "$SP_DIR/data/* "$CONFIG_DIR/" 2>/dev/null || true
 
     echo -e "${GREEN}spoolman2slicer installed successfully.${NC}"
     read -rp "Press Enter to return to the main menu..."
@@ -160,7 +158,7 @@ function choose_slicer() {
 
     # Run Python script
     source "$SP_DIR/venv/bin/activate"
-    python "$SP_DIR/spoolman2slicer.py" -d "$OUTPUT_DIR" -s "$SLICER" -u "$SPOOLMAN_URL"
+    python "$SP_DIR/spoolman2slicer/spoolman2slicer.py" -d "$OUTPUT_DIR" -s "$SLICER" -u "$SPOOLMAN_URL"
     PYTHON_EXIT_CODE=$?
     deactivate
 

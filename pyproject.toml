@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Sebastian Andersson <sebastian@bittr.nu>
+# SPDX-FileCopyrightText: 2026 Sebastian Andersson <sebastian@bittr.nu>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -63,22 +63,24 @@ Repository = "https://github.com/bofh69/spoolman2slicer"
 Issues = "https://github.com/bofh69/spoolman2slicer/issues"
 
 [project.scripts]
-spoolman2slicer = "spoolman2slicer:main"
-create-template-files = "create_template_files:main"
+spoolman2slicer = "spoolman2slicer.spoolman2slicer:main"
+create-template-files = "spoolman2slicer.create_template_files:main"
 
 [tool.setuptools]
-packages = []
-py-modules = ["spoolman2slicer", "create_template_files", "file_utils"]
+packages = { find = { where = ["."] } }
+include-package-data = true
 
 [tool.setuptools.dynamic]
-version = {attr = "spoolman2slicer.VERSION"}
+version = {attr = "spoolman2slicer.spoolman2slicer.VERSION"}
 
-[tool.setuptools.data-files]
-"share/spoolman2slicer/templates-crealityprint" = ["templates-crealityprint/*"]
-"share/spoolman2slicer/templates-orcaslicer" = ["templates-orcaslicer/*"]
-"share/spoolman2slicer/templates-prusaslicer" = ["templates-prusaslicer/*"]
-"share/spoolman2slicer/templates-slic3r" = ["templates-slic3r/*"]
-"share/spoolman2slicer/templates-superslicer" = ["templates-superslicer/*"]
+[tool.setuptools.package-data]
+"spoolman2slicer" = [
+    "data/templates-crealityprint/*",
+    "data/templates-orcaslicer/*",
+    "data/templates-prusaslicer/*",
+    "data/templates-slic3r/*",
+    "data/templates-superslicer/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -100,12 +102,12 @@ tag = true
 push = true
 
 [tool.bumpver.file_patterns]
-"create_template_files.py" = [
+"spoolman2slicer/create_template_files.py" = [
     '^VERSION = "{pep440_version}"',
 ]
 "pyproject.toml" = [
     '^current_version = "{version}"',
 ]
-"spoolman2slicer.py" = [
+"spoolman2slicer/spoolman2slicer.py" = [
     '^VERSION = "{pep440_version}"',
 ]
