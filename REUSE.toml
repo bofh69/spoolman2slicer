@@ -11,9 +11,7 @@ SPDX-PackageDownloadLocation = "https://github.com/bofh69/sm2ss"
 path = [
   ".github/**",
   ".gitignore",
-  "requirements.txt",
-  "requirements-dev.txt",
-  "templates-**/**"
+  "spoolman2slicer/data/templates-**/**"
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "$YEAR $NAME <$CONTACT>"

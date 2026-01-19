@@ -46,7 +46,7 @@ atexit.register(lambda: shutil.rmtree(fake_output_dir, ignore_errors=True))
 with patch("appdirs.user_config_dir", return_value=fake_config_dir):
     # Add parent directory to path to import the module
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    import spoolman2slicer
+    from spoolman2slicer import spoolman2slicer
 
 
 # Override the module-level variables for testing

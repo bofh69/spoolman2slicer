@@ -114,7 +114,7 @@ If you update the filename template, update the name field too.
 ## Usage
 
 ```text
-usage: spoolman2slicer.py [-h] [--version] -d DIR
+usage: spoolman2slicer [-h] [--version] -d DIR
                           [-s {orcaslicer,crealityprint,prusaslicer,slic3r,superslicer}]
                           [-u URL] [-U] [-v] [-V VALUE1,VALUE2..] [-D]
                           [--create-per-spool {all,least-left,most-recent}]
@@ -154,7 +154,8 @@ source path-to-venv/bin/activate
 pip install spoolman2slicer
 ```
 
-The default templates files are then under `venv/share/spoolman2slicer`.
+The default templates files are then under
+`venv/lib/python3.12/site-packages/spoolman2slicer/data/`.
 
 `spoolman2slicer` is then runable from the virtual environment:
 ```sh
@@ -180,7 +181,7 @@ run:
 
 for other arguments to the command, use:
 ```
-  entrypoint: [ "sh", "-c", "python3 ./spoolman2slicer.py #AddYourArgumentsHere" ]
+  entrypoint: [ "sh", "-c", "python3 ./spoolman2slicer/spoolman2slicer.py #AddYourArgumentsHere" ]
 ```
 
 
@@ -191,6 +192,7 @@ If you want to run from source, clone the repository and run:
 python3 -m venv venv
 source venv/bin/activate
 pip install -e .
+spoolman2slicer
 ```
 
 ## Configuring the filament config templates
@@ -272,7 +274,7 @@ Output can look like this (after pretty printing it):
     'pressure_advance': '0.045'
   },
   'sm2s': {
-    'name': 'spoolman2slicer.py',
+    'name': 'spoolman2slicer',
     'version': '0.0.1',
     'now': 'Sun Jan 26 10:57:51 2025',
     'now_int': 1737885471,
@@ -285,17 +287,17 @@ Output can look like this (after pretty printing it):
 
 ### Creating templates from existing config
 
-The `create_template_files.py` program can create basic template files
+The `create-template-files` program can create basic template files
 by copying existing filament config files.
 
 Run it like this:
 ```sh
-./create_template_files.py -s orcaslicer -v
+create-template-files -s orcaslicer -v
 ```
 
 If the program doesn't find the slicers' config dir, use the -d option:
 ```sh
-./create_template_files.py -s orcaslicer -v -d "path/to/slicers/filament/config/dir"
+create-template-files -s orcaslicer -v -d "path/to/slicers/filament/config/dir"
 ```
 
 If that's needed, please create/update a github issue with into about
@@ -373,31 +375,29 @@ the variant first in the filename, if given. The other template files don't use 
 
 ## Running examples
 
-When installed from pip, remove use `spoolman2slicer` instead of `./spoolman2slicer.py`.
-
 ### Ubuntu & OrcaSlicer
 ```sh
-./spoolman2slicer.py -s orcaslicer -U -d ~/.config/OrcaSlicer/user/default/filament/
+spoolman2slicer -s orcaslicer -U -d ~/.config/OrcaSlicer/user/default/filament/
 ```
 
 ### Ubuntu & CrealityPrint
 ```sh
-./spoolman2slicer.py -s crealityprint -U -d ~/.config/Creality/CrealityPrint/user/default/filament/
+spoolman2slicer -s crealityprint -U -d ~/.config/Creality/CrealityPrint/user/default/filament/
 ```
 
 ### Ubuntu & PrusaSlicer
 ```sh
-./spoolman2slicer.py -s prusaslicer -U -d ~/.var/app/com.prusa3d.PrusaSlicer/config/PrusaSlicer/filament/
+spoolman2slicer -s prusaslicer -U -d ~/.var/app/com.prusa3d.PrusaSlicer/config/PrusaSlicer/filament/
 ```
 
 ### Ubuntu & SuperSlicer
 ```sh
-./spoolman2slicer.py -U -d ~/.config/SuperSlicer/filament/
+spoolman2slicer -U -d ~/.config/SuperSlicer/filament/
 ```
 
 ### MacOs & OrcaSlicer
 ```sh
-./spoolman2slicer.py -s orcaslicer -U -d  ~/Library/Application\ Support/OrcaSlicer/user/default/filament
+spoolman2slicer -s orcaslicer -U -d  ~/Library/Application\ Support/OrcaSlicer/user/default/filament
 ```
 
 See the other options above.
