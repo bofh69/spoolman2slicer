@@ -22,7 +22,7 @@ sys.argv = ["create_template_files.py", "--slicer", "superslicer", "--dir", "/tm
 # Add parent directory to path to import the module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import create_template_files
+from spoolman2slicer import create_template_files
 
 
 class TestGetMaterial:
@@ -369,7 +369,7 @@ class TestCopyFilamentTemplateFiles:
 
         args = type("Args", (), {"slicer": "superslicer"})()
 
-        with patch("create_template_files.os.path.dirname", return_value=str(tmp_path)):
+        with patch("spoolman2slicer.create_template_files.os.path.dirname", return_value=str(tmp_path)):
             create_template_files.copy_filament_template_files(args, str(template_dir))
 
         assert (template_dir / "filename.template").exists()
@@ -387,7 +387,7 @@ class TestCopyFilamentTemplateFiles:
         args = type("Args", (), {"slicer": "superslicer"})()
 
         # Should not raise error or overwrite
-        with patch("create_template_files.os.path.dirname", return_value=str(tmp_path)):
+        with patch("spoolman2slicer.create_template_files.os.path.dirname", return_value=str(tmp_path)):
             # This would normally not copy if file exists
             pass
 
@@ -428,9 +428,9 @@ class TestMain:
         )()
 
         with (
-            patch("create_template_files.parse_args", return_value=args),
-            patch("create_template_files.user_config_dir", return_value=str(tmp_path)),
-            patch("create_template_files.os.path.dirname", return_value=str(tmp_path)),
+            patch("spoolman2slicer.create_template_files.parse_args", return_value=args),
+            patch("spoolman2slicer.create_template_files.user_config_dir", return_value=str(tmp_path)),
+            patch("spoolman2slicer.create_template_files.os.path.dirname", return_value=str(tmp_path)),
         ):
             # Create source templates dir
             source_templates = tmp_path / "templates-superslicer"

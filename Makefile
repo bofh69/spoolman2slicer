@@ -12,7 +12,7 @@ PYLINT:=$(VENV)/bin/pylint
 REUSE:=$(VENV)/bin/reuse
 PYTEST:=$(VENV)/bin/pytest
 
-SRC=$(wildcard *.py)
+SRC=$(wildcard spoolman2slicer/*.py)
 SRC_TEST=$(wildcard tests/*.py)
 
 help:
@@ -33,7 +33,6 @@ $(VENV_TIMESTAMP): pyproject.toml
 $(BLACK): $(VENV_TIMESTAMP)
 $(PYLINT): $(VENV_TIMESTAMP)
 $(REUSE): $(VENV_TIMESTAMP)
-$(PYTEST): $(VENV_TIMESTAMP)
 $(PYTEST): $(VENV_TIMESTAMP)
 
 fmt: $(BLACK)

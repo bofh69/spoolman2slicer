@@ -33,7 +33,7 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
+# YELLOW='\033[1;33m'
 NC='\033[0m' # No color
 
 # =========================
@@ -58,12 +58,12 @@ function check_for_updates() {
         cd "$SP_DIR" || exit 1
         git fetch
         LOCAL=$(git rev-parse @)
-        REMOTE=$(git rev-parse @{u})
+        REMOTE=$(git rev-parse '@{u}')
         if [ "$LOCAL" != "$REMOTE" ]; then
             echo -e "${BLUE}Updates available. Updating spoolman2slicer...${NC}"
             git pull
             source venv/bin/activate
-            pip install -r requirements.txt --upgrade
+            pip install . --upgrade
             deactivate
             echo -e "${GREEN}spoolman2slicer updated successfully.${NC}"
         else
@@ -77,7 +77,7 @@ function check_for_updates() {
 # =========================
 function install_spoolman2slicer() {
     echo -e "${BLUE}Installing or updating spoolman2slicer...${NC}"
-    cd "$HOME"
+    cd "$HOME" || exit 1
 
     [ ! -d "$SP_DIR" ] && git clone https://github.com/bofh69/spoolman2slicer.git
     cd "$SP_DIR" || exit 1
@@ -86,13 +86,11 @@ function install_spoolman2slicer() {
 
     source "$SP_DIR/venv/bin/activate"
     echo -e "${BLUE}Installing dependencies...${NC}"
-    pip install -r requirements.txt
+    pip install .
     deactivate
 
-    for slicer in orcaslicer crealityprint prusaslicer superslicer; do
-        mkdir -p "$CONFIG_DIR/templates-$slicer"
-        cp -r "$SP_DIR/templates-$slicer/"* "$CONFIG_DIR/templates-$slicer/" 2>/dev/null || true
-    done
+    mkdir -p "$CONFIG_DIR/"
+    cp -r "$SP_DIR"/data/* "$CONFIG_DIR/" 2>/dev/null || true
 
     echo -e "${GREEN}spoolman2slicer installed successfully.${NC}"
     read -rp "Press Enter to return to the main menu..."
@@ -160,7 +158,7 @@ function choose_slicer() {
 
     # Run Python script
     source "$SP_DIR/venv/bin/activate"
-    python "$SP_DIR/spoolman2slicer.py" -d "$OUTPUT_DIR" -s "$SLICER" -u "$SPOOLMAN_URL"
+    python "$SP_DIR/spoolman2slicer/spoolman2slicer.py" -d "$OUTPUT_DIR" -s "$SLICER" -u "$SPOOLMAN_URL"
     PYTHON_EXIT_CODE=$?
     deactivate
 
