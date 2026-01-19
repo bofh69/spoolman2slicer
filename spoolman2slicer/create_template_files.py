@@ -21,9 +21,11 @@ import platform
 import shutil
 import sys
 
+from importlib import resources
+
 from appdirs import user_config_dir
 
-from file_utils import atomic_write
+from .file_utils import atomic_write
 
 
 VERSION = "0.10.1rc1"
@@ -148,18 +150,25 @@ def copy_filament_template_files(args, template_path):
     """Copy the default filename template, if missing"""
     filename_template_file = f"{template_path}/filename.template"
     if not os.path.exists(filename_template_file):
-        script_dir = os.path.dirname(__file__)
-        shutil.copy(
-            f"{script_dir}/templates-{args.slicer}/filename.template",
-            filename_template_file,
+        res = (
+            resources.files("spoolman2slicer")
+            / "data"
+            / f"templates-{args.slicer}"
+            / "filename.template"
         )
+        with resources.as_file(res) as source_file_path:
+            shutil.copy(source_file_path, filename_template_file)
+
     filename_template_file = f"{template_path}/filename_for_spool.template"
     if not os.path.exists(filename_template_file):
-        script_dir = os.path.dirname(__file__)
-        shutil.copy(
-            f"{script_dir}/templates-{args.slicer}/filename_for_spool.template",
-            filename_template_file,
+        res = (
+            resources.files("spoolman2slicer")
+            / "data"
+            / f"templates-{args.slicer}"
+            / "filename_for_spool.template"
         )
+        with resources.as_file(res) as source_file_path:
+            shutil.copy(source_file_path, filename_template_file)
 
 
 def read_ini_file(filename):
