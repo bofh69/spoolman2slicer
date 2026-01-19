@@ -26,11 +26,6 @@ jobs:
       with:
         python-version: '3.12'
     
-    - name: Update version from git tag
-      run: |
-        chmod +x update_version.sh
-        ./update_version.sh
-    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
