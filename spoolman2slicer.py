@@ -36,7 +36,7 @@ from websockets.client import connect
 from file_utils import atomic_write
 
 
-VERSION = "0.0.2-3-gdf67a39"
+VERSION = "0.10.1rc1"
 
 DEFAULT_TEMPLATE_PREFIX = "default."
 DEFAULT_TEMPLATE_SUFFIX = ".template"

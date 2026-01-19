@@ -64,3 +64,26 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v"
+
+[tool.bumpver]
+current_version = "0.1.1-rc1"
+version_pattern = "MAJOR.MINOR.PATCH[-PYTAGNUM]"
+commit_message = "bump version {old_version} -> {new_version}"
+tag_message = "{new_version}"
+tag_scope = "default"
+pre_commit_hook = ""
+post_commit_hook = ""
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+"create_template_files.py" = [
+    '^VERSION = "{pep440_version}"',
+]
+"pyproject.toml" = [
+    '^current_version = "{version}"',
+]
+"spoolman2slicer.py" = [
+    '^VERSION = "{pep440_version}"',
+]
