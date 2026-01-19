@@ -33,7 +33,7 @@ from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import requests
 from websockets.client import connect
 
-from file_utils import atomic_write
+from .file_utils import atomic_write
 
 
 VERSION = "0.10.1rc1"
