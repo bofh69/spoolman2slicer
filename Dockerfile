@@ -8,7 +8,7 @@ COPY [".", "."]
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV SLICER=prusaslicer
-RUN pip install -r requirements.txt
+RUN pip install .
 RUN mkdir -p /root/.config/spoolman2slicer
 RUN cp -r ./spoolman2slicer/data/* /root/.config/spoolman2slicer/
 RUN mkdir /configs
