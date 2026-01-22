@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spoolman2slicer"
-dynamic = ["version"]
+version = "0.1.1-rc1"
 description = "Export active Spoolman spools' data to filament configuration files for 3D printer slicers"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -67,11 +67,8 @@ spoolman2slicer = "spoolman2slicer.spoolman2slicer:main"
 create-template-files = "spoolman2slicer.create_template_files:main"
 
 [tool.setuptools]
-packages = { find = { where = ["."] } }
+packages = { find = { where = ["spoolman2slicer"] } }
 include-package-data = true
-
-[tool.setuptools.dynamic]
-version = {attr = "spoolman2slicer.spoolman2slicer.VERSION"}
 
 [tool.setuptools.package-data]
 "spoolman2slicer" = [
@@ -107,6 +104,7 @@ push = true
 ]
 "pyproject.toml" = [
     '^current_version = "{version}"',
+    '^version = "{pep440_version}"',
 ]
 "spoolman2slicer/spoolman2slicer.py" = [
     '^VERSION = "{pep440_version}"',
