@@ -67,7 +67,7 @@ spoolman2slicer = "spoolman2slicer.spoolman2slicer:main"
 create-template-files = "spoolman2slicer.create_template_files:main"
 
 [tool.setuptools]
-packages = { find = { where = ["spoolman2slicer"] } }
+packages = ["spoolman2slicer"]
 include-package-data = true
 
 [tool.setuptools.package-data]
