@@ -21,6 +21,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install .
         pip install .[dev]
+    - name: Smoke test
+      run: |
+        spoolman2slicer --help
+        create-template-files --help
     - name: Run tests with coverage
       run: |
         pytest tests/ -v --cov=. --cov-report=term --cov-report=xml
