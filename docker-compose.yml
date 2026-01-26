@@ -18,4 +18,4 @@ services:
     volumes:
       - ./configs:/configs
     #--------Use this for advanced CLI arguments (adapt as needed):------------------
-    #entrypoint: [ "sh", "-c", "python3 ./spoolman2slicer/spoolman2slicer.py -U -d /configs -s ${SLICER} -u ${SPOOLMAN_URL}" ]
+    #entrypoint: [ "sh", "-c", "spoolman2slicer -U -d /configs -s ${SLICER} -u ${SPOOLMAN_URL}" ]
