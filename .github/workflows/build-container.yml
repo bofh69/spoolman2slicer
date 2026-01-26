@@ -4,6 +4,8 @@ on:
   push:
     branches: ["main", "dev"]
     tags: ['v*']
+  pull_request:
+    branches: ["main", "dev"]
 
 permissions:
   packages: write
@@ -20,17 +22,31 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
           echo "DEPLOY_ENV=stage" >> $GITHUB_ENV
+          echo "SHOULD_PUBLISH=true" >> $GITHUB_ENV
           elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
           echo "DEPLOY_ENV=dev" >> $GITHUB_ENV
+          echo "SHOULD_PUBLISH=true" >> $GITHUB_ENV
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
           echo "DEPLOY_ENV=latest" >> $GITHUB_ENV
+          echo "SHOULD_PUBLISH=true" >> $GITHUB_ENV
+          else
+          echo "SHOULD_PUBLISH=false" >> $GITHUB_ENV
           fi
 
       - name: Build Docker image
-        run: docker build . --file ./Dockerfile --tag ghcr.io/bofh69/spoolman2slicer:$DEPLOY_ENV
+        run: docker build . --file ./Dockerfile --tag spoolman2slicer:test
+
+      - name: Smoke test Docker image
+        run: docker run --entrypoint="spoolman2slicer" spoolman2slicer:test --help
+
+      - name: Tag Docker image for publishing
+        if: env.SHOULD_PUBLISH == 'true'
+        run: docker tag spoolman2slicer:test ghcr.io/bofh69/spoolman2slicer:$DEPLOY_ENV
 
       - name: Log in to GitHub Docker Registry
+        if: env.SHOULD_PUBLISH == 'true'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Push Docker image to GitHub Packages
+        if: env.SHOULD_PUBLISH == 'true'
         run: docker push ghcr.io/bofh69/spoolman2slicer:$DEPLOY_ENV
