@@ -8,6 +8,7 @@
 # dependencies = [
 #   "appdirs==1.4.4",
 #   "Jinja2==3.1.6",
+#   "pathvalidate>=3.3.1",
 #   "requests==2.32.5",
 #   "urllib3>=2.6.0",
 #   "websockets==12.0",
@@ -30,6 +31,7 @@ import traceback
 
 from appdirs import user_config_dir
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+from pathvalidate import sanitize_filename
 import requests
 from websockets.client import connect
 
@@ -340,7 +342,9 @@ def get_filament_filename(filament):
         else FILENAME_TEMPLATE
     )
     template = templates.get_template(template_name)
-    return args.dir.removesuffix("/") + "/" + template.render(filament).strip()
+    raw_filename = template.render(filament).strip()
+    filename = sanitize_filename(raw_filename, "_")
+    return args.dir.removesuffix("/") + "/" + filename
 
 
 def get_filename_cache_key(filament):
