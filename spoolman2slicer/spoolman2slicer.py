@@ -845,7 +845,10 @@ def handle_spool_update_msg(msg):
 
 async def connect_updates():
     """Connect to Spoolman and receive updates for vendors, filaments, and spools"""
-    ws_url = "ws" + args.url[4::] + "/api/v1/"
+    base_url = args.url[4::]
+    if base_url[-1] == '/':
+        base_url = base_url[:-1]
+    ws_url = "ws" + base_url + "/api/v1/"
     while True:  # Keep trying to connect indefinitely
         try:
             async for connection in connect(ws_url):
