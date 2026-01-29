@@ -27,7 +27,6 @@ from appdirs import user_config_dir
 
 from .file_utils import atomic_write
 
-
 VERSION = "0.10.1rc1"
 
 ORCASLICER = "orcaslicer"

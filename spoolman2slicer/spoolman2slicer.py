@@ -20,6 +20,8 @@
 Program to load filaments from Spoolman and create slicer filament configuration.
 """
 
+# pylint: disable=too-many-lines
+
 import argparse
 import asyncio
 import json
@@ -36,7 +38,6 @@ import requests
 from websockets.client import connect
 
 from .file_utils import atomic_write
-
 
 VERSION = "0.10.1rc1"
 
@@ -239,6 +240,41 @@ def _log_debug(message: str):
         print(f"DEBUG: {message}")
 
 
+def decode_extra_fields(entry: dict) -> None:
+    """
+    Normalize JSON-encoded ``extra`` fields in Spoolman objects.
+
+    Spoolman stores arbitrary metadata in an ``"extra"`` mapping, where each
+    value may itself be JSON-encoded as a string.
+
+    This function walks the structure and replaces
+    those string values in-place with the corresponding deserialized Python
+    objects by applying ``json.loads``.
+
+    The function is recursive: if the current entry contains nested
+    ``"filament"`` or ``"vendor"`` keys, their ``"extra"`` mappings are
+    processed in the same way.
+
+    Args:
+        entry: A dict representing a Spoolman object (e.g. spool, filament,
+            or vendor) that may contain JSON-encoded data under an ``"extra"`` key.
+    """
+    if "extra" in entry:
+        for k, v in entry["extra"].items():
+            if isinstance(v, str):
+                try:
+                    entry["extra"][k] = json.loads(v)
+                except json.JSONDecodeError:
+                    _log_error(
+                        f"Could not decode extra field '{k}' with value {v!r} as JSON; "
+                        "leaving value unchanged."
+                    )
+    if "filament" in entry:
+        decode_extra_fields(entry["filament"])
+    if "vendor" in entry:
+        decode_extra_fields(entry["vendor"])
+
+
 # pylint: disable=too-many-branches  # Complex error handling requires multiple branches
 def load_filaments_from_spoolman(url: str, max_retries: int = 3):
     """
@@ -257,6 +293,7 @@ def load_filaments_from_spoolman(url: str, max_retries: int = 3):
         json.JSONDecodeError: If response is not valid JSON
         requests.exceptions.HTTPError: If HTTP error occurs
     """
+    # pylint: disable=too-many-statements
     last_exception = None
 
     for attempt in range(max_retries):
@@ -270,6 +307,9 @@ def load_filaments_from_spoolman(url: str, max_retries: int = 3):
 
             try:
                 data = json.loads(response.text)
+                for entry in data:
+                    decode_extra_fields(entry)
+
                 _log_info(f"Successfully loaded {len(data)} spools from Spoolman")
                 return data
             except json.JSONDecodeError as ex:
@@ -846,7 +886,7 @@ def handle_spool_update_msg(msg):
 async def connect_updates():
     """Connect to Spoolman and receive updates for vendors, filaments, and spools"""
     base_url = args.url[4::]
-    if base_url[-1] == '/':
+    if base_url[-1] == "/":
         base_url = base_url[:-1]
     ws_url = "ws" + base_url + "/api/v1/"
     while True:  # Keep trying to connect indefinitely
@@ -858,6 +898,9 @@ async def connect_updates():
                             parsed_msg = json.loads(msg)
                             _log_debug(f"WS-msg {msg}")
                             resource = parsed_msg.get("resource")
+
+                            if "payload" in parsed_msg:
+                                decode_extra_fields(parsed_msg["payload"])
 
                             if resource == "vendor":
                                 handle_vendor_update_msg(parsed_msg)
