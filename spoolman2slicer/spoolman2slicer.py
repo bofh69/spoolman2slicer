@@ -9,7 +9,7 @@
 #   "appdirs==1.4.4",
 #   "Jinja2==3.1.6",
 #   "pathvalidate>=3.3.1",
-#   "requests==2.32.5",
+#   "requests==2.33.0",
 #   "urllib3>=2.6.0",
 #   "websockets==12.0",
 # ]
