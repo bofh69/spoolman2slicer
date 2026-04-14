@@ -145,8 +145,8 @@ function choose_slicer() {
     done
 
     # Ask for Spoolman URL without validation
-    read -rp "Enter the Spoolman URL (default: ${last_spoolman_url:-http://localhost:7912}): " spoolman_url
-    SPOOLMAN_URL=${spoolman_url:-${last_spoolman_url:-http://localhost:7912}}
+    read -rp "Enter the Spoolman URL (default: ${last_spoolman_url:-http://localhost:8000}): " spoolman_url
+    SPOOLMAN_URL=${spoolman_url:-${last_spoolman_url:-http://localhost:8000}}
     echo -e "${GREEN}Spoolman URL set to: $SPOOLMAN_URL${NC}"
 
     # Save settings as defaults for next execution

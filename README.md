@@ -11,14 +11,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## Intro
 
-*spoolman2slicer* is a program to export Spoolman's data to filament
+_spoolman2slicer_ is a program to export Spoolman's data to filament
 configuration files for:
 
-* [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer)
-* [CrealityPrint](https://github.com/CrealityOfficial/CrealityPrint)
-* [PrusaSlicer](https://www.prusa3d.com/page/prusaslicer_424/)
-* [Slic3r](https://slic3r.org/)
-* [SuperSlicer](https://github.com/supermerill/SuperSlicer)
+- [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer)
+- [CrealityPrint](https://github.com/CrealityOfficial/CrealityPrint)
+- [PrusaSlicer](https://www.prusa3d.com/page/prusaslicer_424/)
+- [Slic3r](https://slic3r.org/)
+- [SuperSlicer](https://github.com/supermerill/SuperSlicer)
 
 The filament configuration files are created from templates.
 
@@ -28,10 +28,13 @@ The filament configuration files are created from templates.
 
 - [Spoolman to slicer config generator](#spoolman-to-slicer-config-generator)
   - [Intro](#intro)
+  - [Table of Contents](#table-of-contents)
   - [The workflow](#the-workflow)
     - [Files from filaments](#files-from-filaments)
     - [Files from spools](#files-from-spools)
   - [Usage](#usage)
+    - [Standalone / Direct Install (CLI flags)](#standalone--direct-install-cli-flags)
+    - [Docker / Docker-compose (Environment Variables)](#docker--docker-compose-environment-variables)
   - [Installation](#installation)
     - [From PyPI (Recommended)](#from-pypi-recommended)
     - [Using Docker/Docker-Compose](#using-dockerdocker-compose)
@@ -44,10 +47,11 @@ The filament configuration files are created from templates.
     - [Writing the templates](#writing-the-templates)
   - [Generating for multiple printers, the variants argument](#generating-for-multiple-printers-the-variants-argument)
   - [Running examples](#running-examples)
-    - [Ubuntu & OrcaSlicer](#ubuntu--orcaslicer)
-    - [Ubuntu & PrusaSlicer](#ubuntu--prusaslicer)
-    - [Ubuntu & SuperSlicer](#ubuntu--superslicer)
-    - [MacOs & OrcaSlicer](#macos--orcaslicer)
+    - [Ubuntu \& OrcaSlicer](#ubuntu--orcaslicer)
+    - [Ubuntu \& CrealityPrint](#ubuntu--crealityprint)
+    - [Ubuntu \& PrusaSlicer](#ubuntu--prusaslicer)
+    - [Ubuntu \& SuperSlicer](#ubuntu--superslicer)
+    - [MacOs \& OrcaSlicer](#macos--orcaslicer)
   - [Contributing](#contributing)
 
 <!--TOC-->
@@ -79,7 +83,6 @@ If not using `nfc2klipper`, there is a Moonraker agent
 that can be used to update the active_filament variable whenever
 the spool is changed in moonraker (via frontends, code macros) etc.
 
-
 ### Files from spools
 
 A different workflow is possible and supported by spoolman2slicer.
@@ -90,7 +93,7 @@ can make it set the spool in Klipper during the start of the print.
 
 The `--create-per-spool` command line option causes spoolman2slicer
 to generate one filament configuration file per spool, one for the most
-used spool or one for the latest used spool.  The default templates will then use
+used spool or one for the latest used spool. The default templates will then use
 "SET_ACTIVE_SPOOL ID={{spool.id}}" in the "filament_start_gcode" field.
 
 When creating one file for every spool, it uses the `filename_for_spool.template`
@@ -110,13 +113,34 @@ The default template files also use `- {{spool.id}}` at
 the end of the "name" field in the templates that use a name.
 If you update the filename template, update the name field too.
 
+### ⚠️ Deprecation Notice (v0.1.1)
+
+To improve consistency and follow modern naming standards, several environment variables and CLI flags have been renamed or standardized with the `SM2S_` prefix.
+
+**The old names still work for now (backward compatibility), but they are deprecated and will be removed in a future release.** Please update your configurations to the new values.
+
+| Type | Standard CLI Flag | New Standard Env Var | Legacy Fallback |
+| :--- | :--- | :--- | :--- |
+| CLI | `--live-sync` | `SM2S_LIVE_SYNC` | `--updates` |
+| CLI | `--startup-tidy` | `SM2S_STARTUP_TIDY` | `--delete-all` |
+| Env | `--url` | `SM2S_SPOOLMAN_URL` | `SPOOLMAN_URL` |
+| Env | `--slicer` | `SM2S_SLICER` | `SLICER` |
+| Env | `--dir` | `SM2S_SLICER_CONFIG_DIR` | |
+| Env | `--verbose` | `SM2S_VERBOSE_LOGGING` | |
+| Env | `--variants` | `SM2S_VARIANTS` | |
 
 ## Usage
+
+Python standalone or direct install = CLI
+Docker/Docker-compose = Environment variables
+
+### Standalone / Direct Install (CLI flags)
 
 ```text
 usage: spoolman2slicer [-h] [--version] -d DIR
                           [-s {orcaslicer,crealityprint,prusaslicer,slic3r,superslicer}]
-                          [-u URL] [-U] [-v] [-V VALUE1,VALUE2..] [-D]
+                          [-u URL] [--live-sync] [-v] [-V VALUE1,VALUE2..]
+                          [--startup-tidy]
                           [--create-per-spool {all,least-left,most-recent}]
 
 Fetches data from Spoolman and creates slicer filament config files.
@@ -128,18 +152,57 @@ options:
   -s {orcaslicer,crealityprint,prusaslicer,slic3r,superslicer}, --slicer {orcaslicer,crealityprint,prusaslicer,slic3r,superslicer}
                         the slicer
   -u URL, --url URL     URL for the Spoolman installation
-  -U, --updates         keep running and update filament configs if they're
-                        updated in Spoolman
+  -U, --live-sync, --updates
+                        keep running and update filament configs if they're
+                        updated in Spoolman (real-time)
   -v, --verbose         verbose output
   -V VALUE1,VALUE2.., --variants VALUE1,VALUE2..
                         write one template per value, separated by comma
-  -D, --delete-all      delete all filament configs before adding existing
-                        ones
+  -D, --startup-tidy, --delete-all
+                        delete all filament configs before adding existing
+                        ones (prevents stale files)
   --create-per-spool {all,least-left,most-recent}
                         create one output file per spool instead of per filament.
                         'all': one file per spool.
                         'least-left': one file per filament for the spool having the least filament left.
                         'most-recent': one file per filament for the spool being most recently used.
+```
+
+### Docker / Docker-compose (Environment Variables)
+
+The recommended way to run `spoolman2slicer` in Docker is via environment variables in `docker-compose.yml`.
+
+| Variable                 | CLI Equivalent       | Description                                                         |
+| :----------------------- | :------------------- | :------------------------------------------------------------------ |
+| `SM2S_SLICER_CONFIG_DIR` | `-d / --dir`         | The folder where your slicer stores its configurations.             |
+| `SM2S_SLICER`            | `-s / --slicer`      | The name of your slicer (Fallback: `SLICER`).                       |
+| `SM2S_SPOOLMAN_URL`      | `-u / --url`         | The web address of your Spoolman server (Fallback: `SPOOLMAN_URL`). |
+| `SM2S_LIVE_SYNC`         | `-U / --live-sync`  | Set to `true` to sync changes in real-time.                         |
+| `SM2S_VERBOSE_LOGGING`   | `-v / --verbose`    | Set to `true` for detailed troubleshooting info.                    |
+| `SM2S_VARIANTS`          | `-V / --variants`   | Different versions for different printers.                          |
+| `SM2S_STARTUP_TIDY`      | `-D / --startup-tidy` | Set to `true` to clean old files on startup.                        |
+| `SM2S_CREATE_PER_SPOOL`  | `--create-per-spool` | Create separate files for each spool.                               |
+
+```yaml
+services:
+  spoolman2slicer:
+    image: ghcr.io/bofh69/spoolman2slicer:latest
+    container_name: spoolman2slicer
+    restart: unless-stopped
+    environment:
+      - SM2S_SLICER_CONFIG_DIR=/configs
+      - SM2S_SPOOLMAN_URL=http://spoolman.local:8000
+      - SM2S_SLICER=prusaslicer
+      - SM2S_LIVE_SYNC=true
+      - SM2S_STARTUP_TIDY=false
+    volumes:
+      - ./configs:/configs
+```
+
+Before using it, update the values in the `environment` section to match your setup and run:
+
+```sh
+docker-compose up -d
 ```
 
 ## Installation
@@ -158,36 +221,48 @@ The default templates files are then under
 `venv/lib/python3.12/site-packages/spoolman2slicer/data/`.
 
 `spoolman2slicer` is then runable from the virtual environment:
+
 ```sh
 source path-to-venv/bin/active
 spoolman2slicer
 ```
+
 or
+
 ```sh
 path-to-venv/bin/spoolman2slicer
 ```
 
-
 ### Using Docker/Docker-Compose
 
-spoolman2slicer can be run from docker.
+The recommended way to run `spoolman2slicer` in Docker is via environment variables in `docker-compose.yml`. This removes the need to override the `entrypoint` command.
 
-Included is a Dockerfile and docker-compose config. Before using it,
-update the environment variables and mount points in docker-compose and
-run:
+```yaml
+services:
+  spoolman2slicer:
+    image: ghcr.io/bofh69/spoolman2slicer:latest
+    container_name: spoolman2slicer
+    restart: unless-stopped
+    environment:
+      - SM2S_SLICER_CONFIG_DIR=/configs
+      - SM2S_SPOOLMAN_URL=http://spoolman.local:8000
+      - SM2S_SLICER=prusaslicer
+      - SM2S_LIVE_SYNC=true
+      - SM2S_STARTUP_TIDY=false
+    volumes:
+      - ./configs:/configs
+```
+
+Before using it, update the values in the `environment` section to match your setup and run:
+
 ```sh
-  docker-compose up -d
+docker-compose up -d
 ```
-
-for other arguments to the command, use:
-```
-  entrypoint: [ "sh", "-c", "python3 ./spoolman2slicer/spoolman2slicer.py #AddYourArgumentsHere" ]
-```
-
 
 ### From Source
 
 If you want to run from source, clone the repository and run:
+
 ```sh
 python3 -m venv venv
 source venv/bin/activate
@@ -223,7 +298,6 @@ The templates are read with the filaments' material's name from
 
 If the material isn't found, "default" is used as the material name.
 
-
 ### Available variables in the templates
 
 The variables available to use in the templates comes from the return
@@ -235,20 +309,21 @@ contains Spoolman's spool's fields, as described
 [here](https://donkie.github.io/Spoolman/#tag/spool/operation/Find_spool_spool_get).
 
 spoolman2slicer also adds its own fields under the `sm2s` field:
-* name - the name of the tool's program file.
-* version - the version of the tool.
-* now - the time when the file is created.
-* now_int - the time when the file is created as the number of seconds since UNIX' epoch.
-* slicer_suffix - the filename's suffix.
-* variant - one of the comma separated values given to the `--variants` argument, or an empty string.
-* spoolman_url - the URL to spoolman.
 
+- name - the name of the tool's program file.
+- version - the version of the tool.
+- now - the time when the file is created.
+- now_int - the time when the file is created as the number of seconds since UNIX' epoch.
+- slicer_suffix - the filename's suffix.
+- variant - one of the comma separated values given to the `--variants` argument, or an empty string.
+- spoolman_url - the URL to spoolman.
 
 The available variables, and their values, can be printed by spoolman2slicer when
 the filament is about to be written. Use the `-v` argument as argument
 to spoolman2slicer when it is started.
 
 Output can look like this (after pretty printing it):
+
 ```python
 {
   'id': 17,
@@ -280,7 +355,7 @@ Output can look like this (after pretty printing it):
     'now_int': 1737885471,
     'slicer_suffix': 'ini',
     'variants': 'printer1',
-    'spoolman_url': 'http://localhost:7912'
+    'spoolman_url': 'http://localhost:8000'
   }
 }
 ```
@@ -291,11 +366,13 @@ The `create-template-files` program can create basic template files
 by copying existing filament config files.
 
 Run it like this:
+
 ```sh
 create-template-files -s orcaslicer -v
 ```
 
 If the program doesn't find the slicers' config dir, use the -d option:
+
 ```sh
 create-template-files -s orcaslicer -v -d "path/to/slicers/filament/config/dir"
 ```
@@ -315,7 +392,6 @@ file for its material, unless the material already has a template file.
 The generated files might work for you, but you should check them
 before using them. The start gcode probably needs updates as well as
 the first layer temperatures.
-
 
 ### Writing the templates
 
@@ -347,13 +423,11 @@ OrcaSlicer, one for the .info file as well). It/they will be used if there is no
 material specific template file. The default file is just a copy of
 the default PLA template.
 
-
 The template's format supports advanced features. Follow the link above
 to jinja2 to read its documentation.
 
 The [Jinja Playground](https://github.com/bofh69/jinja-playground) program can help
 when editing the templates, by providing instant feedback.
-
 
 ## Generating for multiple printers, the variants argument
 
@@ -365,6 +439,7 @@ Each time `sm2s.variant` will have one of the values.
 
 The templates can check the variable and output different fields or values depending on it.
 Ie:
+
 ```
 start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE={% if sm2s.variant == "printer_big %}{{extra.pressure_advance_big|default(0)|float}}{% else %}"{{extra.pressure_advance_small|default(0)|float}}{% endif %}\n"
 ```
@@ -372,30 +447,34 @@ start_filament_gcode = "; Filament gcode\nSET_PRESSURE_ADVANCE={% if sm2s.varian
 The default `filename*.template` files uses the variant variable to put
 the variant first in the filename, if given. The other template files don't use it.
 
-
 ## Running examples
 
 ### Ubuntu & OrcaSlicer
+
 ```sh
-spoolman2slicer -s orcaslicer -U -d ~/.config/OrcaSlicer/user/default/filament/
+spoolman2slicer -s orcaslicer --live-sync -d ~/.config/OrcaSlicer/user/default/filament/
 ```
 
 ### Ubuntu & CrealityPrint
+
 ```sh
 spoolman2slicer -s crealityprint -U -d ~/.config/Creality/CrealityPrint/user/default/filament/
 ```
 
 ### Ubuntu & PrusaSlicer
+
 ```sh
 spoolman2slicer -s prusaslicer -U -d ~/.var/app/com.prusa3d.PrusaSlicer/config/PrusaSlicer/filament/
 ```
 
 ### Ubuntu & SuperSlicer
+
 ```sh
 spoolman2slicer -U -d ~/.config/SuperSlicer/filament/
 ```
 
 ### MacOs & OrcaSlicer
+
 ```sh
 spoolman2slicer -s orcaslicer -U -d  ~/Library/Application\ Support/OrcaSlicer/user/default/filament
 ```

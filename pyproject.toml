@@ -26,7 +26,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -38,8 +37,8 @@ dependencies = [
     "appdirs==1.4.4",
     "Jinja2==3.1.6",
     "pathvalidate>=3.3.1",
-    "requests==2.33.0",
-    "websockets==12.0",
+    "requests==2.33.1",
+    "websockets==16.0",
     "urllib3>=2.6.0",
 ]
 [project.optional-dependencies]
@@ -100,13 +99,10 @@ tag = true
 push = true
 
 [tool.bumpver.file_patterns]
-"spoolman2slicer/create_template_files.py" = [
+"spoolman2slicer/constants.py" = [
     '^VERSION = "{pep440_version}"',
 ]
 "pyproject.toml" = [
     '^current_version = "{version}"',
     '^version = "{pep440_version}"',
-]
-"spoolman2slicer/spoolman2slicer.py" = [
-    '^VERSION = "{pep440_version}"',
 ]

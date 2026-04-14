@@ -9,12 +9,11 @@
 #   "appdirs==1.4.4",
 #   "Jinja2==3.1.6",
 #   "pathvalidate>=3.3.1",
-#   "requests==2.33.0",
+#   "requests==2.33.1",
 #   "urllib3>=2.6.0",
-#   "websockets==12.0",
+#   "websockets==16.0",
 # ]
 # ///
-
 
 """
 Program to load filaments from Spoolman and create slicer filament configuration.
@@ -31,148 +30,212 @@ import sys
 import time
 import traceback
 
-from appdirs import user_config_dir
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 from pathvalidate import sanitize_filename
 import requests
-from websockets.client import connect
+from websockets.asyncio.client import connect
 
-from .file_utils import atomic_write
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    load_dotenv = None
 
-VERSION = "0.10.1rc1"
-
-DEFAULT_TEMPLATE_PREFIX = "default."
-DEFAULT_TEMPLATE_SUFFIX = ".template"
-FILENAME_TEMPLATE = "filename.template"
-FILENAME_FOR_SPOOL_TEMPLATE = "filename_for_spool.template"
-
-REQUEST_TIMEOUT_SECONDS = 10
-
-# pylint: disable=duplicate-code
-ORCASLICER = "orcaslicer"
-CREALITYPRINT = "crealityprint"
-PRUSASLICER = "prusaslicer"
-SLICER = "slic3r"
-SUPERSLICER = "superslicer"
-
-parser = argparse.ArgumentParser(
-    description="Fetches data from Spoolman and creates slicer filament config files.",
+from .constants import (
+    VERSION,
+    VALID_SPOOL_MODES,
+    DEFAULT_TEMPLATE_PREFIX,
+    DEFAULT_TEMPLATE_SUFFIX,
+    FILENAME_TEMPLATE,
+    FILENAME_FOR_SPOOL_TEMPLATE,
+    REQUEST_TIMEOUT_SECONDS,
+    APP_NAME,
+    Slicers,
+)
+from .utils import (
+    get_user_config_dir,
+    is_json_slicer,
+    get_arg_default,
+    get_env_choice,
+    get_env_str,
+    atomic_write,
 )
 
-parser.add_argument("--version", action="version", version="%(prog)s " + VERSION)
-parser.add_argument(
-    "-d",
-    "--dir",
-    metavar="DIR",
-    required=True,
-    help="the slicer's filament config dir",
-)
-
-parser.add_argument(
-    "-s",
-    "--slicer",
-    default=SUPERSLICER,
-    choices=[ORCASLICER, CREALITYPRINT, PRUSASLICER, SLICER, SUPERSLICER],
-    help="the slicer",
-)
-
-parser.add_argument(
-    "-u",
-    "--url",
-    metavar="URL",
-    default="http://localhost:7912",
-    help="URL for the Spoolman installation",
-)
-
-parser.add_argument(
-    "-U",
-    "--updates",
-    action="store_true",
-    help="keep running and update filament configs if they're updated in Spoolman",
-)
-
-parser.add_argument(
-    "-v",
-    "--verbose",
-    action="store_true",
-    help="verbose output",
-)
-
-parser.add_argument(
-    "-V",
-    "--variants",
-    metavar="VALUE1,VALUE2..",
-    default="",
-    help="write one template per value, separated by comma",
-)
-
-parser.add_argument(
-    "-D",
-    "--delete-all",
-    action="store_true",
-    help="delete all filament configs before adding existing ones",
-)
-
-parser.add_argument(
-    "--create-per-spool",
-    choices=["all", "least-left", "most-recent"],
-    help="create one output file per spool instead of per filament. "
-    "'all': one file per spool. "
-    "'least-left': one file per filament for the spool having the least filament left. "
-    "'most-recent': one file per filament for the spool being most recently used.",
-)
-
-args = parser.parse_args()
-
-config_dir = user_config_dir(appname="spoolman2slicer", appauthor=False, roaming=True)
-template_path = os.path.join(config_dir, f"templates-{args.slicer}")
-
-if args.verbose:
-    print(f"Reading templates files from: {template_path}")
-
-if not os.path.exists(template_path):
-    script_dir = os.path.dirname(__file__)
-    if platform.system() == "Windows":
-        print(
-            (
-                f'ERROR: No templates found in "{template_path}".\n'
-                "\n"
-                "Install them with:\n"
-                "\n"
-                f'mkdir "{config_dir} /p"\n'
-                f'copy "{script_dir}"\\templates-* "{config_dir}\\"\n'
-            ),
-            file=sys.stderr,
-        )
-    else:
-        print(
-            (
-                f'ERROR: No templates found in "{template_path}".\n'
-                "\n"
-                "Install them with:\n"
-                "\n"
-                f"mkdir -p '{config_dir}'\n"
-                f"cp -r '{script_dir}'/templates-* '{config_dir}/'\n"
-            ),
-            file=sys.stderr,
-        )
-    sys.exit(1)
-
-if not os.path.exists(template_path):
-    print(f'ERROR: No templates found in "{template_path}".', file=sys.stderr)
-    sys.exit(1)
-
-if not os.path.exists(args.dir):
-    print(f'ERROR: The output dir "{args.dir}" doesn\'t exist.', file=sys.stderr)
-    sys.exit(1)
-
-loader = FileSystemLoader(template_path)
-templates = Environment(loader=loader)  # nosec B701
-
+# Global variables will be initialized in parse_args/main
+ARGS = None
+TEMPLATES = None
 filament_id_to_filename = {}
 filament_id_to_content = {}
-
 filename_usage = {}
+
+
+def parse_args():
+    """Configure and parse command line arguments with environment variable support."""
+
+    parser = argparse.ArgumentParser(
+        prog="spoolman2slicer",
+        description="Fetches data from Spoolman and creates slicer filament config files.",
+    )
+
+    parser.add_argument("--version", action="version", version="%(prog)s " + VERSION)
+
+    parser.add_argument(
+        "-d",
+        "--dir",
+        metavar="DIR",
+        default=get_env_str("SM2S_SLICER_CONFIG_DIR"),
+        help="The folder where your slicer stores its filament configurations.",
+    )
+
+    parser.add_argument(
+        "-s",
+        "--slicer",
+        type=str.lower,
+        default=get_env_choice(
+            parser,
+            "SM2S_SLICER",
+            Slicers.choices(),
+            legacy_name="SLICER",
+            default=Slicers.SUPERSLICER,
+        ),
+        choices=Slicers.choices(),
+        help="The name of your slicer (e.g., OrcaSlicer, PrusaSlicer).",
+    )
+
+    # Backwards compatibility: checks SM2S_SPOOLMAN_URL first, then legacy SPOOLMAN_URL/URL
+    parser.add_argument(
+        "-u",
+        "--url",
+        metavar="URL",
+        default=get_env_str(
+            "SM2S_SPOOLMAN_URL",
+            legacy_name="SPOOLMAN_URL",
+            default="http://localhost:8000",
+        ),
+        help="The web address of your Spoolman server.",
+    )
+
+    parser.add_argument(
+        "-U",
+        "--live-sync",
+        "--updates",
+        action="store_true",
+        dest="live_sync",
+        default=get_arg_default(parser, "SM2S_LIVE_SYNC", default_val=False),
+        help="Keep the tool running to automatically sync changes from Spoolman in real-time.",
+    )
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=get_arg_default(parser, "SM2S_VERBOSE_LOGGING", default_val=False),
+        help="Show detailed progress and error information for troubleshooting.",
+    )
+
+    parser.add_argument(
+        "-V",
+        "--variants",
+        metavar="VALUE1,VALUE2..",
+        default=get_env_str("SM2S_VARIANTS", default=""),
+        help=(
+            "Create different filament versions for different printers "
+            "(e.g., 'Printer1,Printer2')."
+        ),
+    )
+
+    parser.add_argument(
+        "-D",
+        "--startup-tidy",
+        "--delete-all",
+        action="store_true",
+        dest="startup_tidy",
+        default=get_arg_default(parser, "SM2S_STARTUP_TIDY", default_val=False),
+        help=(
+            "Clear out previously generated filament files before starting "
+            "(keeps your folders tidy)."
+        ),
+    )
+
+    parser.add_argument(
+        "--create-per-spool",
+        type=str.lower,
+        choices=VALID_SPOOL_MODES,
+        default=get_env_choice(
+            parser,
+            "SM2S_CREATE_PER_SPOOL",
+            VALID_SPOOL_MODES,
+            legacy_name="CREATE_PER_SPOOL",
+        ),
+        help=(
+            "create one output file per spool instead of per filament. "
+            "'all': one file per spool. "
+            "'least-left': one file per filament for the spool having the least "
+            "filament left. "
+            "'most-recent': one file per filament for the spool being most "
+            "recently used."
+        ),
+    )
+
+    parsed_args = parser.parse_args()
+    if parsed_args.slicer:
+        parsed_args.slicer = Slicers(parsed_args.slicer)
+
+    return parsed_args, parser
+
+
+def setup_templates(args_obj):
+    """Configure Jinja2 TEMPLATES environment based on slicer."""
+    config_dir = get_user_config_dir()
+    template_path = os.path.join(config_dir, f"templates-{args_obj.slicer}")
+
+    if args_obj.verbose:
+        print(f"Reading templates files from: {template_path}")
+
+    if not os.path.exists(template_path):
+        script_dir = os.path.dirname(__file__)
+        data_template_path = os.path.join(
+            script_dir, "data", f"templates-{args_obj.slicer}"
+        )
+
+        # Check if templates exist in package data
+        if os.path.exists(data_template_path):
+            template_path = data_template_path
+        else:
+            if platform.system() == "Windows":
+                print(
+                    (
+                        f'ERROR: No templates found in "{template_path}".\n'
+                        "\n"
+                        "Install them with:\n"
+                        "\n"
+                        f'mkdir "{config_dir}"\n'
+                        f'copy "{script_dir}"\\templates-* "{config_dir}\\"\n'
+                    ),
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    (
+                        f'ERROR: No templates found in "{template_path}".\n'
+                        "\n"
+                        "Install them with:\n"
+                        "\n"
+                        f"mkdir -p '{config_dir}'\n"
+                        f"cp -r '{script_dir}'/templates-* '{config_dir}/'\n"
+                    ),
+                    file=sys.stderr,
+                )
+            sys.exit(1)
+
+    if not os.path.exists(args_obj.dir):
+        print(
+            f'ERROR: The output dir "{args_obj.dir}" doesn\'t exist.', file=sys.stderr
+        )
+        sys.exit(1)
+
+    return Environment(loader=FileSystemLoader(template_path))  # nosec B701
+
 
 vendors_cache = {}  # id -> vendor dict
 filaments_cache = {}  # id -> filament dict
@@ -183,13 +246,13 @@ material_code_year_prefix = ""  # pylint: disable=invalid-name
 def add_sm2s_to_filament(filament, suffix, variant, spool=None):
     """Adds the sm2s object and spool field to filament"""
     sm2s = {
-        "name": parser.prog,
+        "name": APP_NAME,
         "version": VERSION,
         "now": time.asctime(),
         "now_int": int(time.time()),
         "slicer_suffix": suffix,
         "variant": variant.strip(),
-        "spoolman_url": args.url,
+        "spoolman_url": ARGS.url if ARGS else "http://localhost:8000",
     }
     filament["sm2s"] = sm2s
     # Add spool field (empty dict if not provided)
@@ -198,9 +261,9 @@ def add_sm2s_to_filament(filament, suffix, variant, spool=None):
 
 def get_config_suffix():
     """Returns the slicer's config file prefix"""
-    if args.slicer in (SLICER, SUPERSLICER, PRUSASLICER):
+    if ARGS.slicer in (Slicers.SLIC3R, Slicers.SUPERSLICER, Slicers.PRUSA):
         return ["ini"]
-    if args.slicer in (ORCASLICER, CREALITYPRINT):
+    if is_json_slicer(ARGS.slicer):
         return ["json", "info"]
 
     raise ValueError("That slicer is not yet supported")
@@ -215,7 +278,7 @@ def _log_error(message: str, details: str = None):
         details: Optional additional details
     """
     print(f"ERROR: {message}", file=sys.stderr)
-    if details and args.verbose:
+    if details and ARGS.verbose:
         print(f"  Details: {details}", file=sys.stderr)
 
 
@@ -236,7 +299,7 @@ def _log_debug(message: str):
     Args:
         message: Message to log
     """
-    if args.verbose:
+    if ARGS.verbose:
         print(f"DEBUG: {message}")
 
 
@@ -378,13 +441,13 @@ def get_filament_filename(filament):
     # Use filename_for_spool template when in "all" mode
     template_name = (
         FILENAME_FOR_SPOOL_TEMPLATE
-        if args.create_per_spool == "all"
+        if ARGS.create_per_spool == "all"
         else FILENAME_TEMPLATE
     )
-    template = templates.get_template(template_name)
+    template = TEMPLATES.get_template(template_name)
     raw_filename = template.render(filament).strip()
     filename = sanitize_filename(raw_filename, "_")
-    return args.dir.removesuffix("/") + "/" + filename
+    return ARGS.dir.removesuffix("/") + "/" + filename
 
 
 def get_filename_cache_key(filament):
@@ -395,7 +458,7 @@ def get_filename_cache_key(filament):
     Includes variant in the key to support per-variant filenames.
     """
     variant = filament.get("sm2s", {}).get("variant", "")
-    if args.create_per_spool == "all" and filament.get("spool", {}).get("id"):
+    if ARGS.create_per_spool == "all" and filament.get("spool", {}).get("id"):
         return f"spool-{filament['spool']['id']}-{filament['sm2s']['slicer_suffix']}-{variant}"
     return f"{filament['id']}-{filament['sm2s']['slicer_suffix']}-{variant}"
 
@@ -408,7 +471,7 @@ def get_content_cache_key(filament):
     Includes variant in the key to support per-variant content.
     """
     variant = filament.get("sm2s", {}).get("variant", "")
-    if args.create_per_spool == "all" and filament.get("spool", {}).get("id"):
+    if ARGS.create_per_spool == "all" and filament.get("spool", {}).get("id"):
         return f"spool-{filament['spool']['id']}-{variant}"
     return f"{filament['id']}-{variant}"
 
@@ -430,8 +493,25 @@ def get_default_template_for_suffix(suffix):
     return f"{DEFAULT_TEMPLATE_PREFIX}{suffix}{DEFAULT_TEMPLATE_SUFFIX}"
 
 
+def is_managed_file(filepath):
+    """
+    Check if the file was created by this tool by looking for its signature.
+    This prevents deleting manual profiles or system configs.
+    """
+    if not os.path.isfile(filepath):
+        return False
+    try:
+        # Read the first 2KB to check for the signature
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read(2048).lower()
+            # This matches both JSON comments and INI headers
+            return "generated by spoolman2slicer" in content
+    except Exception:  # pylint: disable=broad-exception-caught
+        return False
+
+
 def delete_filament(filament, is_update=False):
-    """Delete the filament's file if no longer in use"""
+    """Delete the filament's file if no longer in use and managed by this tool"""
     filename = get_cached_filename_from_filaments_id(filament)
 
     if filename not in filename_usage:
@@ -445,18 +525,25 @@ def delete_filament(filament, is_update=False):
         new_filename = get_filament_filename(filament)
 
     if filename != new_filename:
-        print(f"Deleting: {filename}")
-        os.remove(filename)
+        # Safety check: only delete if the tool's signature is found
+        if is_managed_file(filename):
+            print(f"Deleting: {filename}")
+            os.remove(filename)
+        else:
+            _log_info(f"Skipping deletion of non-managed file: {filename}")
 
 
 def delete_all_filaments():
-    """Delete all config files in the filament dir"""
-    for filename in os.listdir(args.dir):
+    """Delete all config files in the filament dir that are managed by this tool"""
+    for filename in os.listdir(ARGS.dir):
         for suffix in get_config_suffix():
             if filename.endswith("." + suffix):
-                filename = args.dir + "/" + filename
-                print(f"Deleting: {filename}")
-                os.remove(filename)
+                filepath = ARGS.dir.removesuffix("/") + "/" + filename
+                if is_managed_file(filepath):
+                    print(f"Deleting: {filepath}")
+                    os.remove(filepath)
+                else:
+                    _log_debug(f"Skipping non-managed file: {filepath}")
 
 
 def write_filament(filament):
@@ -484,13 +571,13 @@ def write_filament(filament):
         )
 
     try:
-        template = templates.get_template(template_name)
+        template = TEMPLATES.get_template(template_name)
         _log_debug(f"Using {template_name} as template")
     except TemplateNotFound:
         template_name = get_default_template_for_suffix(
             filament["sm2s"]["slicer_suffix"]
         )
-        template = templates.get_template(template_name)
+        template = TEMPLATES.get_template(template_name)
         _log_debug("Using the default template")
 
     _log_info(f"Rendering for filename: {filename}")
@@ -509,7 +596,7 @@ def write_filament(filament):
     atomic_write(filename, filament_text)
     filament_id_to_content[content_cache_key] = filament_text
 
-    if args.verbose:
+    if ARGS.verbose:
         print()
 
 
@@ -525,13 +612,13 @@ def process_filaments_default(spools):
     for filament_id in filament_ids_with_spools:
         if filament_id in filaments_cache:
             filament = filaments_cache[filament_id].copy()
-            if args.slicer == CREALITYPRINT:
+            if ARGS.slicer == Slicers.CREALITY:
                 filament["spool_id"] = filament_id
                 filament["material_code"] = material_code_year_prefix + str(
                     filament_id
                 ).rjust(3, "0")
             for suffix in get_config_suffix():
-                for variant in args.variants.split(","):
+                for variant in ARGS.variants.split(","):
                     add_sm2s_to_filament(filament, suffix, variant)
                     write_filament(filament)
 
@@ -543,13 +630,13 @@ def process_filaments_per_spool_all(spools):
         if spool.get("archived", False):
             continue
         filament = spool["filament"].copy()  # Make a copy to avoid mutation
-        if args.slicer == CREALITYPRINT:
+        if ARGS.slicer == Slicers.CREALITY:
             filament["spool_id"] = spool["id"]
             filament["material_code"] = material_code_year_prefix + str(
                 spool["id"]
             ).rjust(3, "0")
         for suffix in get_config_suffix():
-            for variant in args.variants.split(","):
+            for variant in ARGS.variants.split(","):
                 add_sm2s_to_filament(filament, suffix, variant, spool)
                 write_filament(filament)
 
@@ -599,7 +686,7 @@ def process_filaments_per_spool_selected(spools, selector_func):
         selected_spool = selector_func(spool_list)
         filament = selected_spool["filament"].copy()
         for suffix in get_config_suffix():
-            for variant in args.variants.split(","):
+            for variant in ARGS.variants.split(","):
                 add_sm2s_to_filament(filament, suffix, variant, selected_spool)
                 write_filament(filament)
 
@@ -657,11 +744,11 @@ def load_and_update_all_filaments(url: str):
     # Convert spools_cache to list for processing
     spools = list(spools_cache.values())
 
-    if args.create_per_spool == "all":
+    if ARGS.create_per_spool == "all":
         process_filaments_per_spool_all(spools)
-    elif args.create_per_spool == "least-left":
+    elif ARGS.create_per_spool == "least-left":
         process_filaments_per_spool_selected(spools, select_spool_by_least_left)
-    elif args.create_per_spool == "most-recent":
+    elif ARGS.create_per_spool == "most-recent":
         process_filaments_per_spool_selected(spools, select_spool_by_most_recent)
     else:
         process_filaments_default(spools)
@@ -747,16 +834,16 @@ def handle_spool_update(spool):
     if not filament:
         return
 
-    if args.create_per_spool == "all":
+    if ARGS.create_per_spool == "all":
         # One file per spool
         if not spool.get("archived", False):
             filament_copy = filament.copy()
             for suffix in get_config_suffix():
-                for variant in args.variants.split(","):
+                for variant in ARGS.variants.split(","):
                     add_sm2s_to_filament(filament_copy, suffix, variant, spool)
                     delete_filament(filament_copy, is_update=True)
                     write_filament(filament_copy)
-    elif args.create_per_spool in ["least-left", "most-recent"]:
+    elif ARGS.create_per_spool in ["least-left", "most-recent"]:
         # Find all spools for this filament and reprocess
         filament_id = filament["id"]
         filament_spools = [
@@ -767,14 +854,14 @@ def handle_spool_update(spool):
         ]
 
         if filament_spools:
-            if args.create_per_spool == "least-left":
+            if ARGS.create_per_spool == "least-left":
                 selected_spool = select_spool_by_least_left(filament_spools)
             else:  # most-recent
                 selected_spool = select_spool_by_most_recent(filament_spools)
 
             filament_copy = selected_spool["filament"].copy()
             for suffix in get_config_suffix():
-                for variant in args.variants.split(","):
+                for variant in ARGS.variants.split(","):
                     add_sm2s_to_filament(filament_copy, suffix, variant, selected_spool)
                     delete_filament(filament_copy, is_update=True)
                     write_filament(filament_copy)
@@ -782,7 +869,7 @@ def handle_spool_update(spool):
             # No active spools left, delete the file
             filament_copy = filament.copy()
             for suffix in get_config_suffix():
-                for variant in args.variants.split(","):
+                for variant in ARGS.variants.split(","):
                     add_sm2s_to_filament(filament_copy, suffix, variant)
                     delete_filament(filament_copy)
     else:
@@ -801,7 +888,7 @@ def handle_spool_update(spool):
         if has_active_spools:
             filament_copy = filament.copy()
             for suffix in get_config_suffix():
-                for variant in args.variants.split(","):
+                for variant in ARGS.variants.split(","):
                     add_sm2s_to_filament(filament_copy, suffix, variant)
                     delete_filament(filament_copy, is_update=True)
                     write_filament(filament_copy)
@@ -809,7 +896,7 @@ def handle_spool_update(spool):
             # No active spools, delete the file
             filament_copy = filament.copy()
             for suffix in get_config_suffix():
-                for variant in args.variants.split(","):
+                for variant in ARGS.variants.split(","):
                     add_sm2s_to_filament(filament_copy, suffix, variant)
                     delete_filament(filament_copy)
 
@@ -850,7 +937,7 @@ def handle_spool_update_msg(msg):
             old_filament
             and new_filament
             and old_filament.get("id") != new_filament.get("id")
-            and not args.create_per_spool
+            and not ARGS.create_per_spool
         ):
             # Check if old filament has any remaining active spools
             old_filament_id = old_filament["id"]
@@ -863,7 +950,7 @@ def handle_spool_update_msg(msg):
                 # Delete old filament file
                 old_filament_copy = old_filament.copy()
                 for suffix in get_config_suffix():
-                    for variant in args.variants.split(","):
+                    for variant in ARGS.variants.split(","):
                         add_sm2s_to_filament(old_filament_copy, suffix, variant)
                         delete_filament(old_filament_copy)
 
@@ -885,7 +972,7 @@ def handle_spool_update_msg(msg):
 
 async def connect_updates():
     """Connect to Spoolman and receive updates for vendors, filaments, and spools"""
-    base_url = args.url[4::]
+    base_url = ARGS.url[4::]
     if base_url[-1] == "/":
         base_url = base_url[:-1]
     ws_url = "ws" + base_url + "/api/v1/"
@@ -935,19 +1022,14 @@ async def connect_updates():
             await asyncio.sleep(5)  # Wait before retrying
 
 
-def main():
-    """Main function to run the spoolman2slicer tool"""
-    if args.delete_all:
-        delete_all_filaments()
-
-    # In update mode, keep retrying until initial load succeeds
-    # This is necessary because websocket payloads don't contain full vendor objects
-    if args.updates:
+def _perform_initial_data_load():
+    """Performs the initial filament data load from Spoolman."""
+    if ARGS.live_sync:
         retry_delay = 5
-        _log_debug("Update mode enabled - will retry initial load until successful")
+        _log_info("Update mode enabled - will retry initial load until successful")
         while True:
             try:
-                load_and_update_all_filaments(args.url)
+                load_and_update_all_filaments(ARGS.url)
                 _log_debug("Initial data load successful")
                 break  # Success, proceed to websocket connection
             except (
@@ -956,64 +1038,76 @@ def main():
                 requests.exceptions.HTTPError,
                 json.JSONDecodeError,
             ) as ex:
-                # Error details already logged by load_filaments_from_spoolman
                 print(
                     f"Initial load failed in update mode: {type(ex).__name__}",
                     file=sys.stderr,
                 )
-                print(
-                    f"Retrying in {retry_delay} seconds...",
-                    file=sys.stderr,
-                )
+                print(f"Retrying in {retry_delay} seconds...", file=sys.stderr)
                 time.sleep(retry_delay)
                 continue
-            # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
+            # pylint: disable=broad-exception-caught
             except Exception as ex:
                 _log_error(f"Unexpected error while loading filaments: {ex}")
-                if args.verbose:
+                if ARGS.verbose:
                     traceback.print_exc()
-                print(
-                    f"Retrying in {retry_delay} seconds...",
-                    file=sys.stderr,
-                )
+                print(f"Retrying in {retry_delay} seconds...", file=sys.stderr)
                 time.sleep(retry_delay)
                 continue
     else:
-        # Non-update mode: fail immediately on error
         try:
-            load_and_update_all_filaments(args.url)
+            load_and_update_all_filaments(ARGS.url)
         except (
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
             json.JSONDecodeError,
         ) as ex:
-            # Error details already logged by load_filaments_from_spoolman
-            _log_error(f"Failed to load filaments: {type(ex).__name__}")
+            if not isinstance(
+                ex, (requests.exceptions.ConnectionError, requests.exceptions.Timeout)
+            ):
+                _log_error(f"Failed to load filaments: {type(ex).__name__}")
             sys.exit(1)
-        # pylint: disable=broad-exception-caught  # Need to catch all unexpected errors
+        # pylint: disable=broad-exception-caught
         except Exception as ex:
             _log_error(f"Unexpected error while loading filaments: {ex}")
-            if args.verbose:
+            if ARGS.verbose:
                 traceback.print_exc()
             sys.exit(1)
 
-    if args.updates:
-        print("Waiting for updates...")
-        try:
-            asyncio.run(connect_updates())
-        except KeyboardInterrupt:
-            print("\nShutting down gracefully...")
-            sys.exit(0)
-        # pylint: disable=broad-exception-caught  # Need to catch all websocket errors
-        except Exception as ex:
-            print(
-                f"\nERROR: Failed to maintain WebSocket connection: {ex}",
-                file=sys.stderr,
-            )
-            if args.verbose:
-                traceback.print_exc()
-            sys.exit(1)
+
+def _run_update_mode():
+    """Runs the continuous update sync mode."""
+    print("Waiting for updates...")
+    try:
+        asyncio.run(connect_updates())
+    except KeyboardInterrupt:
+        print("\nShutting down gracefully...")
+        sys.exit(0)
+    # pylint: disable=broad-exception-caught
+    except Exception as ex:
+        print(
+            f"\nERROR: Failed to maintain WebSocket connection: {ex}",
+            file=sys.stderr,
+        )
+        if ARGS.verbose:
+            traceback.print_exc()
+        sys.exit(1)
+
+
+def main():
+    """Main function to run the spoolman2slicer tool"""
+    # pylint: disable=global-statement
+    global ARGS, TEMPLATES
+    ARGS, _ = parse_args()
+    TEMPLATES = setup_templates(ARGS)
+
+    if ARGS.startup_tidy:
+        delete_all_filaments()
+
+    _perform_initial_data_load()
+
+    if ARGS.live_sync:
+        _run_update_mode()
 
 
 if __name__ == "__main__":

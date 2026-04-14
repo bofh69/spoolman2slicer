@@ -37,9 +37,8 @@ Path(fake_template_dir, "default.ini.template").write_text(
     "filament_type = {{material}}\n"
 )
 
-# Mock sys.argv and user_config_dir before importing
 fake_output_dir = tempfile.mkdtemp()
-sys.argv = ["spoolman2slicer.py", "--dir", fake_output_dir, "--url", "http://test:7912"]
+# No module-level sys.argv patching to avoid side effects
 
 # Register cleanup handlers for temporary directories
 atexit.register(lambda: shutil.rmtree(fake_config_dir, ignore_errors=True))
@@ -54,8 +53,18 @@ with patch("appdirs.user_config_dir", return_value=fake_config_dir):
 
 # Override the module-level variables for testing
 @pytest.fixture(autouse=True)
-def reset_caches():
-    """Reset module-level caches before each test"""
+def reset_globals():
+    """Reset module-level globals before each test"""
+    import argparse
+    spoolman2slicer.ARGS = argparse.Namespace(
+        url="http://test:8000",
+        dir=fake_output_dir,
+        live_sync=False,
+        startup_tidy=False,
+        verbose=False,
+        create_per_spool=None
+    )
+    spoolman2slicer.TEMPLATES = MagicMock()
     spoolman2slicer.filament_id_to_filename.clear()
     spoolman2slicer.filament_id_to_content.clear()
     spoolman2slicer.filename_usage.clear()
@@ -78,8 +87,7 @@ class TestUpdateModeResilience:
             return None
 
         with (
-            patch.object(spoolman2slicer.args, "updates", True),
-            patch.object(spoolman2slicer.args, "delete_all", False),
+            patch("sys.argv", ["spoolman2slicer.py", "--dir", fake_output_dir, "--url", "http://test:8000", "--live-sync"]),
             patch(
                 "spoolman2slicer.spoolman2slicer.load_and_update_all_filaments",
                 side_effect=side_effect_func,
@@ -114,8 +122,7 @@ class TestUpdateModeResilience:
             return None
 
         with (
-            patch.object(spoolman2slicer.args, "updates", True),
-            patch.object(spoolman2slicer.args, "delete_all", False),
+            patch("sys.argv", ["spoolman2slicer.py", "--dir", fake_output_dir, "--url", "http://test:8000", "--live-sync"]),
             patch(
                 "spoolman2slicer.spoolman2slicer.load_and_update_all_filaments",
                 side_effect=side_effect_func,
@@ -150,8 +157,7 @@ class TestUpdateModeResilience:
             return None
 
         with (
-            patch.object(spoolman2slicer.args, "updates", True),
-            patch.object(spoolman2slicer.args, "delete_all", False),
+            patch("sys.argv", ["spoolman2slicer.py", "--dir", fake_output_dir, "--url", "http://test:8000", "--live-sync"]),
             patch(
                 "spoolman2slicer.spoolman2slicer.load_and_update_all_filaments",
                 side_effect=side_effect_func,
@@ -180,8 +186,7 @@ class TestUpdateModeResilience:
             return None
 
         with (
-            patch.object(spoolman2slicer.args, "updates", True),
-            patch.object(spoolman2slicer.args, "delete_all", False),
+            patch("sys.argv", ["spoolman2slicer.py", "--dir", fake_output_dir, "--url", "http://test:8000", "--live-sync"]),
             patch(
                 "spoolman2slicer.spoolman2slicer.load_and_update_all_filaments",
                 side_effect=side_effect_func,
@@ -201,8 +206,7 @@ class TestUpdateModeResilience:
     def test_non_update_mode_exits_on_connection_error(self):
         """Test that without -U mode, program exits on API connection error"""
         with (
-            patch.object(spoolman2slicer.args, "updates", False),
-            patch.object(spoolman2slicer.args, "delete_all", False),
+            patch("sys.argv", ["spoolman2slicer.py", "--dir", fake_output_dir, "--url", "http://test:8000"]),
             patch(
                 "spoolman2slicer.spoolman2slicer.load_and_update_all_filaments",
                 side_effect=requests.exceptions.ConnectionError("Connection refused"),
@@ -223,10 +227,10 @@ class TestCachingForSpoolAll:
     ):
         """Test that cache keys use spool ID when --create-per-spool all is used"""
         with (
-            patch.object(spoolman2slicer, "templates") as mock_templates,
-            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
-            patch.object(spoolman2slicer.args, "verbose", False),
-            patch.object(spoolman2slicer.args, "create_per_spool", "all"),
+            patch.object(spoolman2slicer, "TEMPLATES") as mock_templates,
+            patch.object(spoolman2slicer.ARGS, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.ARGS, "verbose", False),
+            patch.object(spoolman2slicer.ARGS, "create_per_spool", "all"),
         ):
             from jinja2 import Environment, FileSystemLoader
 
@@ -259,10 +263,10 @@ class TestCachingForSpoolAll:
     ):
         """Test that cache keys use filament ID when not in 'all' mode"""
         with (
-            patch.object(spoolman2slicer, "templates") as mock_templates,
-            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
-            patch.object(spoolman2slicer.args, "verbose", False),
-            patch.object(spoolman2slicer.args, "create_per_spool", None),
+            patch.object(spoolman2slicer, "TEMPLATES") as mock_templates,
+            patch.object(spoolman2slicer.ARGS, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.ARGS, "verbose", False),
+            patch.object(spoolman2slicer.ARGS, "create_per_spool", None),
         ):
             from jinja2 import Environment, FileSystemLoader
 
@@ -295,10 +299,10 @@ class TestCachingForSpoolAll:
     ):
         """Test that multiple spools of same filament have separate cache entries in 'all' mode"""
         with (
-            patch.object(spoolman2slicer, "templates") as mock_templates,
-            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
-            patch.object(spoolman2slicer.args, "verbose", False),
-            patch.object(spoolman2slicer.args, "create_per_spool", "all"),
+            patch.object(spoolman2slicer, "TEMPLATES") as mock_templates,
+            patch.object(spoolman2slicer.ARGS, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.ARGS, "verbose", False),
+            patch.object(spoolman2slicer.ARGS, "create_per_spool", "all"),
         ):
             from jinja2 import Environment, FileSystemLoader
 
@@ -344,10 +348,10 @@ class TestCachingForSpoolAll:
     ):
         """Test that cache correctly detects different content for different spools"""
         with (
-            patch.object(spoolman2slicer, "templates") as mock_templates,
-            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
-            patch.object(spoolman2slicer.args, "verbose", True),
-            patch.object(spoolman2slicer.args, "create_per_spool", "all"),
+            patch.object(spoolman2slicer, "TEMPLATES") as mock_templates,
+            patch.object(spoolman2slicer.ARGS, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.ARGS, "verbose", True),
+            patch.object(spoolman2slicer.ARGS, "create_per_spool", "all"),
         ):
             from jinja2 import Environment, FileSystemLoader
 
@@ -394,10 +398,10 @@ class TestCachingForSpoolAll:
     ):
         """Test that cache keys include variant to support multiple variants"""
         with (
-            patch.object(spoolman2slicer, "templates") as mock_templates,
-            patch.object(spoolman2slicer.args, "dir", temp_output_dir),
-            patch.object(spoolman2slicer.args, "verbose", False),
-            patch.object(spoolman2slicer.args, "create_per_spool", None),
+            patch.object(spoolman2slicer, "TEMPLATES") as mock_templates,
+            patch.object(spoolman2slicer.ARGS, "dir", temp_output_dir),
+            patch.object(spoolman2slicer.ARGS, "verbose", False),
+            patch.object(spoolman2slicer.ARGS, "create_per_spool", None),
         ):
             from jinja2 import Environment, FileSystemLoader
 

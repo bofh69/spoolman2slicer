@@ -23,6 +23,7 @@ sys.argv = ["create_template_files.py", "--slicer", "superslicer", "--dir", "/tm
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from spoolman2slicer import create_template_files
+from spoolman2slicer.constants import Slicers
 
 
 class TestGetMaterial:
@@ -32,7 +33,7 @@ class TestGetMaterial:
         """Test extracting material from OrcaSlicer config"""
         config = {"filament_type": ["PLA"]}
         material = create_template_files.get_material(
-            config, create_template_files.ORCASLICER
+            config, Slicers.ORCA
         )
         assert material == "PLA"
 
@@ -40,7 +41,7 @@ class TestGetMaterial:
         """Test extracting material from CrealityPrint config"""
         config = {"filament_type": "PLA"}
         material = create_template_files.get_material(
-            config, create_template_files.CREALITYPRINT
+            config, Slicers.CREALITY
         )
         assert material == "PLA"
 
@@ -48,7 +49,7 @@ class TestGetMaterial:
         """Test extracting material from SuperSlicer config"""
         config = {"filament_type": "ABS"}
         material = create_template_files.get_material(
-            config, create_template_files.SUPERSLICER
+            config, Slicers.SUPERSLICER
         )
         assert material == "ABS"
 
@@ -56,7 +57,7 @@ class TestGetMaterial:
         """Test extracting material from PrusaSlicer config"""
         config = {"filament_type": "PETG"}
         material = create_template_files.get_material(
-            config, create_template_files.PRUSASLICER
+            config, Slicers.PRUSA
         )
         assert material == "PETG"
 
@@ -121,7 +122,7 @@ class TestLoadConfigFile:
         json_file.write_text(json.dumps(test_data))
 
         config = create_template_files.load_config_file(
-            create_template_files.ORCASLICER, str(json_file)
+            Slicers.ORCA, str(json_file)
         )
 
         assert config["name"] == "Test Filament"
@@ -138,7 +139,7 @@ class TestLoadConfigFile:
         json_file.write_text(json.dumps(test_data))
 
         config = create_template_files.load_config_file(
-            create_template_files.CREALITYPRINT, str(json_file)
+            Slicers.CREALITY, str(json_file)
         )
 
         assert config["name"] == "Test Filament"
@@ -150,7 +151,7 @@ class TestLoadConfigFile:
         ini_file.write_text("filament_type = PLA\n" "temperature = 210\n")
 
         config = create_template_files.load_config_file(
-            create_template_files.SUPERSLICER, str(ini_file)
+            Slicers.SUPERSLICER, str(ini_file)
         )
 
         assert config["filament_type"] == "PLA"
@@ -170,7 +171,7 @@ class TestStoreConfig:
         }
 
         create_template_files.store_config(
-            create_template_files.ORCASLICER, str(template_file), config
+            Slicers.ORCA, str(template_file), config
         )
 
         assert template_file.exists()
@@ -188,7 +189,7 @@ class TestStoreConfig:
         }
 
         create_template_files.store_config(
-            create_template_files.CREALITYPRINT, str(template_file), config
+            Slicers.CREALITY, str(template_file), config
         )
 
         assert template_file.exists()
@@ -205,7 +206,7 @@ class TestStoreConfig:
         }
 
         create_template_files.store_config(
-            create_template_files.SUPERSLICER, str(template_file), config
+            Slicers.SUPERSLICER, str(template_file), config
         )
 
         assert template_file.exists()
@@ -219,7 +220,7 @@ class TestStoreConfig:
         config = {"updated_time": "{{sm2s.now_int}}"}
 
         create_template_files.store_config(
-            create_template_files.SUPERSLICER, str(template_file), config
+            Slicers.SUPERSLICER, str(template_file), config
         )
 
         content = template_file.read_text()
@@ -240,7 +241,7 @@ class TestUpdateConfigSettings:
             "nozzle_temperature": ["210"],
         }
 
-        args = type("Args", (), {"slicer": create_template_files.ORCASLICER})()
+        args = type("Args", (), {"slicer": Slicers.ORCA})()
         updated = create_template_files.update_config_settings(args, config)
 
         assert (
@@ -260,7 +261,7 @@ class TestUpdateConfigSettings:
             "nozzle_temperature": ["210"],
         }
 
-        args = type("Args", (), {"slicer": create_template_files.CREALITYPRINT})()
+        args = type("Args", (), {"slicer": Slicers.CREALITY})()
         updated = create_template_files.update_config_settings(args, config)
 
         assert (
@@ -280,7 +281,7 @@ class TestUpdateConfigSettings:
             "bed_temperature": "60",
         }
 
-        args = type("Args", (), {"slicer": create_template_files.SUPERSLICER})()
+        args = type("Args", (), {"slicer": Slicers.SUPERSLICER})()
         updated = create_template_files.update_config_settings(args, config)
 
         assert updated["filament_type"] == "{{material}}"
@@ -294,7 +295,7 @@ class TestUpdateConfigSettings:
             "custom_key": "custom_value",
         }
 
-        args = type("Args", (), {"slicer": create_template_files.SUPERSLICER})()
+        args = type("Args", (), {"slicer": Slicers.SUPERSLICER})()
         updated = create_template_files.update_config_settings(args, config)
 
         assert updated["custom_key"] == "custom_value"
@@ -438,7 +439,7 @@ class TestMain:
                 "spoolman2slicer.create_template_files.parse_args", return_value=args
             ),
             patch(
-                "spoolman2slicer.create_template_files.user_config_dir",
+                "spoolman2slicer.create_template_files.get_user_config_dir",
                 return_value=str(tmp_path),
             ),
             patch(
@@ -513,7 +514,7 @@ class TestAtomicWrites:
         }
 
         create_template_files.store_config(
-            create_template_files.SUPERSLICER, str(template_file), config
+            Slicers.SUPERSLICER, str(template_file), config
         )
 
         # Verify file was created
@@ -532,7 +533,7 @@ class TestAtomicWrites:
         }
 
         create_template_files.store_config(
-            create_template_files.ORCASLICER, str(template_file), config
+            Slicers.ORCA, str(template_file), config
         )
 
         # Verify file was created
@@ -557,7 +558,7 @@ class TestAtomicWrites:
         }
 
         create_template_files.store_config(
-            create_template_files.CREALITYPRINT, str(template_file), config
+            Slicers.CREALITY, str(template_file), config
         )
 
         # Verify file was created
